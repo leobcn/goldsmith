@@ -17,7 +17,7 @@ type Goldsmith interface {
 }
 
 func Begin(srcDir string) Goldsmith {
-	gs := &goldsmith{srcDir: srcDir, refs: make(map[string]bool)}
+	gs := &chain{srcDir: srcDir, refs: make(map[string]bool)}
 	gs.Chain(new(loader))
 	return gs
 }

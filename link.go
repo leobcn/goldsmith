@@ -6,28 +6,29 @@ import (
 	"sync"
 )
 
-type context struct {
-	gs            *goldsmith
-	plug          Plugin
-	filters       []Filter
-	input, output chan *file
+type link struct {
+	chain   *chain
+	plugin  Plugin
+	filters []Filter
+	input   chan *file
+	output  chan *file
 }
 
-func (ctx *context) step() {
+func (ctx *link) step() {
 	defer close(ctx.output)
 
 	var err error
 	var filters []Filter
-	if initializer, ok := ctx.plug.(Initializer); ok {
+	if initializer, ok := ctx.plugin.(Initializer); ok {
 		filters, err = initializer.Initialize(ctx)
 		if err != nil {
-			ctx.gs.fault(ctx.plug.Name(), nil, err)
+			ctx.chain.fault(ctx.plugin.Name(), nil, err)
 			return
 		}
 	}
 
 	if ctx.input != nil {
-		processor, _ := ctx.plug.(Processor)
+		processor, _ := ctx.plugin.(Processor)
 
 		var wg sync.WaitGroup
 		for i := 0; i < runtime.NumCPU(); i++ {
@@ -38,7 +39,7 @@ func (ctx *context) step() {
 					accept := processor != nil
 					for _, filter := range append(ctx.filters, filters...) {
 						if accept, err = filter.Accept(ctx, f); err != nil {
-							ctx.gs.fault(filter.Name(), f, err)
+							ctx.chain.fault(filter.Name(), f, err)
 							return
 						}
 
@@ -49,10 +50,10 @@ func (ctx *context) step() {
 
 					if accept {
 						if _, err := f.Seek(0, os.SEEK_SET); err != nil {
-							ctx.gs.fault("core", f, err)
+							ctx.chain.fault("core", f, err)
 						}
 						if err := processor.Process(ctx, f); err != nil {
-							ctx.gs.fault(ctx.plug.Name(), f, err)
+							ctx.chain.fault(ctx.plugin.Name(), f, err)
 						}
 					} else {
 						ctx.output <- f
@@ -63,9 +64,9 @@ func (ctx *context) step() {
 		wg.Wait()
 	}
 
-	if finalizer, ok := ctx.plug.(Finalizer); ok {
+	if finalizer, ok := ctx.plugin.(Finalizer); ok {
 		if err := finalizer.Finalize(ctx); err != nil {
-			ctx.gs.fault(ctx.plug.Name(), nil, err)
+			ctx.chain.fault(ctx.plugin.Name(), nil, err)
 		}
 	}
 }
@@ -74,14 +75,14 @@ func (ctx *context) step() {
 //	Context Implementation
 //
 
-func (ctx *context) DispatchFile(f File) {
+func (ctx *link) DispatchFile(f File) {
 	ctx.output <- f.(*file)
 }
 
-func (ctx *context) SrcDir() string {
-	return ctx.gs.srcDir
+func (ctx *link) SrcDir() string {
+	return ctx.chain.srcDir
 }
 
-func (ctx *context) DstDir() string {
-	return ctx.gs.dstDir
+func (ctx *link) DstDir() string {
+	return ctx.chain.dstDir
 }
