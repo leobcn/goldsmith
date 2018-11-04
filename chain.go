@@ -19,7 +19,7 @@ type chain struct {
 	errorMtx sync.Mutex
 }
 
-func (c *chain) pushContext(plug Plugin) *link {
+func (c *chain) linkPlugin(plug Plugin) *link {
 	ctx := &link{chain: c, plugin: plug, output: make(chan *file)}
 	ctx.filters = append(ctx.filters, c.filters...)
 
@@ -84,7 +84,7 @@ func (c *chain) Chain(p Plugin) Goldsmith {
 		panic("attempted reuse of goldsmith instance")
 	}
 
-	c.pushContext(p)
+	c.linkPlugin(p)
 	return c
 }
 
