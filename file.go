@@ -102,11 +102,12 @@ func (f *file) ModTime() time.Time {
 }
 
 func (f *file) Value(key string) (interface{}, bool) {
-	return getDelimValue(f.Meta, key)
+	value, ok := f.Meta[key]
+	return value, ok
 }
 
-func (f *file) SetValue(key string, value interface{}) bool {
-	return setDelimValue(f.Meta, key, value)
+func (f *file) SetValue(key string, value interface{}) {
+	f.Meta[key] = value
 }
 
 func (f *file) InheritValues(src File) {

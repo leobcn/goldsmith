@@ -31,7 +31,7 @@ type File interface {
 	ModTime() time.Time
 
 	Value(key string) (interface{}, bool)
-	SetValue(key string, value interface{}) bool
+	SetValue(key string, value interface{})
 	InheritValues(src File)
 
 	Read(p []byte) (int, error)
