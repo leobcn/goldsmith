@@ -79,14 +79,17 @@ func (c *chain) fault(name string, f *file, err error) {
 	c.errors = append(c.errors, ferr)
 }
 
-func (c *chain) buildCachePaths(name, path string) (dataPath, metaPath string) {
+func (c *chain) buildCachePaths(name, path string) (dataPath, metaPath, depsPath string) {
 	h := fnv.New32a()
 	h.Write([]byte(name))
 	h.Write([]byte(path))
 	sum := h.Sum32()
 
-	dataPath = filepath.Join(c.cacheDir, fmt.Sprintf("gs_%.8x_data", sum))
-	metaPath = filepath.Join(c.cacheDir, fmt.Sprintf("gs_%.8x_meta", sum))
+	ext := filepath.Ext(path)
+
+	dataPath = filepath.Join(c.cacheDir, fmt.Sprintf("gs_%.8x_data%s", sum, ext))
+	metaPath = filepath.Join(c.cacheDir, fmt.Sprintf("gs_%.8x_meta.json", sum))
+	depsPath = filepath.Join(c.cacheDir, fmt.Sprintf("gs_%.8x_deps.txt", sum))
 	return
 }
 
@@ -96,11 +99,14 @@ func (c *chain) cacheFile(name string, f *file, deps []string) error {
 	}
 
 	if len(c.cacheDir) > 0 {
-		dataPath, metaPath := c.buildCachePaths(name, f.Path())
+		dataPath, metaPath, depsPath := c.buildCachePaths(name, f.Path())
 		if err := c.cacheFileData(dataPath, f); err != nil {
 			return err
 		}
 		if err := c.cacheFileMeta(metaPath, f); err != nil {
+			return err
+		}
+		if err := c.cacheFileDeps(depsPath, deps); err != nil {
 			return err
 		}
 	}
@@ -136,6 +142,22 @@ func (c *chain) cacheFileMeta(path string, f *file) error {
 
 	if _, err := fp.Write(metaJson); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (c *chain) cacheFileDeps(path string, deps []string) error {
+	fp, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer fp.Close()
+
+	for _, dep := range deps {
+		if _, err := fp.WriteString(fmt.Sprintln(dep)); err != nil {
+			return err
+		}
 	}
 
 	return nil
