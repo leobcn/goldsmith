@@ -76,12 +76,8 @@ func (c *chain) fault(name string, f *file, err error) {
 	c.errors = append(c.errors, ferr)
 }
 
-func (c *chain) cacheFile(name string, f *file, deps []string) error {
-	if len(deps) == 0 {
-		panic("cached files must have one or more dependencies")
-	}
-
-	return c.cache.writeFile(name, f, deps)
+func (c *chain) cacheFile(pluginName, inputPath string, outputFile *file, depPaths []string) error {
+	return c.cache.writeFile(pluginName, inputPath, outputFile, depPaths)
 }
 
 //

@@ -26,20 +26,16 @@ func (c *cache) buildCachePaths(name, path string) (dataPath, metaPath, depsPath
 	return
 }
 
-func (c *cache) writeFile(name string, f *file, deps []string) error {
-	if len(deps) == 0 {
-		panic("cached files must have one or more dependencies")
-	}
-
+func (c *cache) writeFile(pluginName, inputPath string, outputFile *file, depPaths []string) error {
 	if len(c.baseDir) > 0 {
-		dataPath, metaPath, depsPath := c.buildCachePaths(name, f.Path())
-		if err := c.writeFileData(dataPath, f); err != nil {
+		dataPath, metaPath, depsPath := c.buildCachePaths(pluginName, inputPath)
+		if err := c.writeFileData(dataPath, outputFile); err != nil {
 			return err
 		}
-		if err := c.writeFileMeta(metaPath, f); err != nil {
+		if err := c.writeFileMeta(metaPath, outputFile); err != nil {
 			return err
 		}
-		if err := c.writeFileDeps(depsPath, deps); err != nil {
+		if err := c.writeFileDeps(depsPath, depPaths); err != nil {
 			return err
 		}
 	}
@@ -80,14 +76,14 @@ func (c *cache) writeFileMeta(path string, f *file) error {
 	return nil
 }
 
-func (c *cache) writeFileDeps(path string, deps []string) error {
+func (c *cache) writeFileDeps(path string, depPaths []string) error {
 	fp, err := os.Create(path)
 	if err != nil {
 		return err
 	}
 	defer fp.Close()
 
-	for _, dep := range deps {
+	for _, dep := range depPaths {
 		if _, err := fp.WriteString(fmt.Sprintln(dep)); err != nil {
 			return err
 		}
