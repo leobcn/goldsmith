@@ -22,6 +22,12 @@ func Begin(srcDir string) Goldsmith {
 	return gs
 }
 
+func BeginCached(srcDir, cacheDir string) Goldsmith {
+	gs := &chain{srcDir: srcDir, cacheDir: cacheDir, refs: make(map[string]bool)}
+	gs.Chain(new(loader))
+	return gs
+}
+
 type File interface {
 	Path() string
 	Name() string
@@ -72,6 +78,7 @@ func NewFileFromAsset(path, asset string) (File, error) {
 
 type Context interface {
 	DispatchFile(f File)
+	CacheFile(f File, deps ...string)
 
 	SrcDir() string
 	DstDir() string

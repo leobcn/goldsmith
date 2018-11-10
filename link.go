@@ -79,6 +79,13 @@ func (ctx *link) DispatchFile(f File) {
 	ctx.output <- f.(*file)
 }
 
+func (ctx *link) CacheFile(f File, deps ...string) {
+	err := ctx.chain.cacheFile(ctx.plugin.Name(), f.(*file), deps)
+	if err != nil {
+		ctx.chain.fault(ctx.plugin.Name(), f.(*file), err)
+	}
+}
+
 func (ctx *link) SrcDir() string {
 	return ctx.chain.srcDir
 }

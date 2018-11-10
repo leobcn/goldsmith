@@ -7,8 +7,9 @@ import (
 )
 
 type chain struct {
-	srcDir string
-	dstDir string
+	srcDir   string
+	dstDir   string
+	cacheDir string
 
 	links    []*link
 	refs     map[string]bool
@@ -73,6 +74,10 @@ func (c *chain) fault(name string, f *file, err error) {
 	}
 
 	c.errors = append(c.errors, ferr)
+}
+
+func (c *chain) cacheFile(name string, f *file, deps []string) error {
+	return nil
 }
 
 //
