@@ -79,41 +79,62 @@ func (c *chain) fault(name string, f *file, err error) {
 	c.errors = append(c.errors, ferr)
 }
 
+func (c *chain) buildCachePaths(name, path string) (dataPath, metaPath string) {
+	h := fnv.New32a()
+	h.Write([]byte(name))
+	h.Write([]byte(path))
+	sum := h.Sum32()
+
+	dataPath = filepath.Join(c.cacheDir, fmt.Sprintf("gs_%.8x_data", sum))
+	metaPath = filepath.Join(c.cacheDir, fmt.Sprintf("gs_%.8x_meta", sum))
+	return
+}
+
 func (c *chain) cacheFile(name string, f *file, deps []string) error {
 	if len(deps) == 0 {
 		panic("cached files must have one or more dependencies")
 	}
 
-	if len(c.cacheDir) == 0 {
-		return nil
+	if len(c.cacheDir) > 0 {
+		dataPath, metaPath := c.buildCachePaths(name, f.Path())
+		if err := c.cacheFileData(dataPath, f); err != nil {
+			return err
+		}
+		if err := c.cacheFileMeta(metaPath, f); err != nil {
+			return err
+		}
 	}
 
-	h := fnv.New32a()
-	h.Write([]byte(name))
-	h.Write([]byte(f.Path()))
-	sum := h.Sum32()
+	return nil
+}
 
-	dataPath := filepath.Join(c.cacheDir, fmt.Sprintf("gs_%.8x_data", sum))
-	dataFile, err := os.Create(dataPath)
+func (c *chain) cacheFileData(path string, f *file) error {
+	fp, err := os.Create(path)
 	if err != nil {
 		return err
 	}
-	defer dataFile.Close()
-	if _, err := f.WriteTo(dataFile); err != nil {
+	defer fp.Close()
+
+	if _, err := f.WriteTo(fp); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func (c *chain) cacheFileMeta(path string, f *file) error {
 	metaJson, err := json.Marshal(f.Meta)
 	if err != nil {
 		return err
 	}
-	metaPath := filepath.Join(c.cacheDir, fmt.Sprintf("gs_%.8x_meta", sum))
-	metaFile, err := os.Create(metaPath)
+
+	fp, err := os.Create(path)
 	if err != nil {
 		return err
 	}
-	defer metaFile.Close()
-	if _, err := metaFile.Write(metaJson); err != nil {
+	defer fp.Close()
+
+	if _, err := fp.Write(metaJson); err != nil {
 		return err
 	}
 
