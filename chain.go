@@ -81,7 +81,7 @@ func (c *chain) cacheFile(name string, f *file, deps []string) error {
 		panic("cached files must have one or more dependencies")
 	}
 
-	return c.cache.cacheFile(name, f, deps)
+	return c.cache.writeFile(name, f, deps)
 }
 
 //

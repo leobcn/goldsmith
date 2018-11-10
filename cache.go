@@ -26,20 +26,20 @@ func (c *cache) buildCachePaths(name, path string) (dataPath, metaPath, depsPath
 	return
 }
 
-func (c *cache) cacheFile(name string, f *file, deps []string) error {
+func (c *cache) writeFile(name string, f *file, deps []string) error {
 	if len(deps) == 0 {
 		panic("cached files must have one or more dependencies")
 	}
 
 	if len(c.baseDir) > 0 {
 		dataPath, metaPath, depsPath := c.buildCachePaths(name, f.Path())
-		if err := c.cacheFileData(dataPath, f); err != nil {
+		if err := c.writeFileData(dataPath, f); err != nil {
 			return err
 		}
-		if err := c.cacheFileMeta(metaPath, f); err != nil {
+		if err := c.writeFileMeta(metaPath, f); err != nil {
 			return err
 		}
-		if err := c.cacheFileDeps(depsPath, deps); err != nil {
+		if err := c.writeFileDeps(depsPath, deps); err != nil {
 			return err
 		}
 	}
@@ -47,7 +47,7 @@ func (c *cache) cacheFile(name string, f *file, deps []string) error {
 	return nil
 }
 
-func (c *cache) cacheFileData(path string, f *file) error {
+func (c *cache) writeFileData(path string, f *file) error {
 	fp, err := os.Create(path)
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func (c *cache) cacheFileData(path string, f *file) error {
 	return nil
 }
 
-func (c *cache) cacheFileMeta(path string, f *file) error {
+func (c *cache) writeFileMeta(path string, f *file) error {
 	metaJson, err := json.Marshal(f.Meta)
 	if err != nil {
 		return err
@@ -80,7 +80,7 @@ func (c *cache) cacheFileMeta(path string, f *file) error {
 	return nil
 }
 
-func (c *cache) cacheFileDeps(path string, deps []string) error {
+func (c *cache) writeFileDeps(path string, deps []string) error {
 	fp, err := os.Create(path)
 	if err != nil {
 		return err
