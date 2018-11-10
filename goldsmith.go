@@ -23,7 +23,7 @@ func Begin(srcDir string) Goldsmith {
 }
 
 func BeginCached(srcDir, cacheDir string) Goldsmith {
-	gs := &chain{srcDir: srcDir, cacheDir: cacheDir, refs: make(map[string]bool)}
+	gs := &chain{srcDir: srcDir, cache: &cache{cacheDir}, refs: make(map[string]bool)}
 	gs.Chain(new(loader))
 	return gs
 }
