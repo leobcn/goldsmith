@@ -1,6 +1,9 @@
 package goldsmith
 
 import (
+	"encoding/json"
+	"fmt"
+	"hash/fnv"
 	"os"
 	"path/filepath"
 	"sync"
@@ -77,6 +80,43 @@ func (c *chain) fault(name string, f *file, err error) {
 }
 
 func (c *chain) cacheFile(name string, f *file, deps []string) error {
+	if len(deps) == 0 {
+		panic("cached files must have one or more dependencies")
+	}
+
+	if len(c.cacheDir) == 0 {
+		return nil
+	}
+
+	h := fnv.New32a()
+	h.Write([]byte(name))
+	h.Write([]byte(f.Path()))
+	sum := h.Sum32()
+
+	dataPath := filepath.Join(c.cacheDir, fmt.Sprintf("gs_%.8x_data", sum))
+	dataFile, err := os.Create(dataPath)
+	if err != nil {
+		return err
+	}
+	defer dataFile.Close()
+	if _, err := f.WriteTo(dataFile); err != nil {
+		return err
+	}
+
+	metaJson, err := json.Marshal(f.Meta)
+	if err != nil {
+		return err
+	}
+	metaPath := filepath.Join(c.cacheDir, fmt.Sprintf("gs_%.8x_meta", sum))
+	metaFile, err := os.Create(metaPath)
+	if err != nil {
+		return err
+	}
+	defer metaFile.Close()
+	if _, err := metaFile.Write(metaJson); err != nil {
+		return err
+	}
+
 	return nil
 }
 
