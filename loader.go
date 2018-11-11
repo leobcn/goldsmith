@@ -19,15 +19,15 @@ func (*loader) Initialize(ctx *Context) ([]Filter, error) {
 
 		relPath, _ := filepath.Rel(ctx.SrcDir(), info.path)
 
-		f := &File{
-			path:    relPath,
+		file := &File{
+			relPath: relPath,
 			Meta:    make(map[string]interface{}),
 			modTime: info.ModTime(),
 			size:    info.Size(),
-			asset:   info.path,
+			absPath: info.path,
 		}
 
-		ctx.DispatchFile(f)
+		ctx.DispatchFile(file)
 	}
 
 	return nil, nil

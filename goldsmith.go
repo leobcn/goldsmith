@@ -91,7 +91,7 @@ func (gs *Goldsmith) exportFile(file *File) error {
 		return err
 	}
 
-	for pathSeg := cleanPath(file.path); pathSeg != "."; pathSeg = filepath.Dir(pathSeg) {
+	for pathSeg := cleanPath(file.relPath); pathSeg != "."; pathSeg = filepath.Dir(pathSeg) {
 		gs.fileRefs[pathSeg] = true
 	}
 
@@ -112,7 +112,7 @@ func (gs *Goldsmith) fault(pluginName string, file *File, err error) {
 
 	faultError := &Error{Name: pluginName, Err: err}
 	if file != nil {
-		faultError.Path = file.path
+		faultError.Path = file.relPath
 	}
 
 	gs.errors = append(gs.errors, faultError)

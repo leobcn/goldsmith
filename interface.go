@@ -5,7 +5,7 @@ type Initializer interface {
 }
 
 type Processor interface {
-	Process(ctx *Context, f *File) error
+	Process(ctx *Context, file *File) error
 }
 
 type Finalizer interface {
@@ -18,7 +18,7 @@ type Component interface {
 
 type Filter interface {
 	Component
-	Accept(ctx *Context, f *File) (bool, error)
+	Accept(ctx *Context, file *File) (bool, error)
 }
 
 type Plugin interface {
