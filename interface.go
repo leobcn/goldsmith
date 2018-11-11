@@ -1,15 +1,15 @@
 package goldsmith
 
 type Initializer interface {
-	Initialize(ctx Context) ([]Filter, error)
+	Initialize(ctx *Context) ([]Filter, error)
 }
 
 type Processor interface {
-	Process(ctx Context, f *File) error
+	Process(ctx *Context, f *File) error
 }
 
 type Finalizer interface {
-	Finalize(ctx Context) error
+	Finalize(ctx *Context) error
 }
 
 type Component interface {
@@ -18,7 +18,7 @@ type Component interface {
 
 type Filter interface {
 	Component
-	Accept(ctx Context, f *File) (bool, error)
+	Accept(ctx *Context, f *File) (bool, error)
 }
 
 type Plugin interface {

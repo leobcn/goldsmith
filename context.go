@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-type link struct {
+type Context struct {
 	chain   *Goldsmith
 	plugin  Plugin
 	filters []Filter
@@ -14,7 +14,26 @@ type link struct {
 	output  chan *File
 }
 
-func (ctx *link) step() {
+func (ctx *Context) DispatchFile(f *File) {
+	ctx.output <- f
+}
+
+func (ctx *Context) CacheFile(inputFile, outputFile *File, depPaths ...string) {
+	err := ctx.chain.cacheWriteFile(ctx.plugin.Name(), inputFile, outputFile, depPaths)
+	if err != nil {
+		ctx.chain.fault(ctx.plugin.Name(), outputFile, err)
+	}
+}
+
+func (ctx *Context) SrcDir() string {
+	return ctx.chain.srcDir
+}
+
+func (ctx *Context) DstDir() string {
+	return ctx.chain.dstDir
+}
+
+func (ctx *Context) step() {
 	defer close(ctx.output)
 
 	var err error
@@ -69,27 +88,4 @@ func (ctx *link) step() {
 			ctx.chain.fault(ctx.plugin.Name(), nil, err)
 		}
 	}
-}
-
-//
-//	Context Implementation
-//
-
-func (ctx *link) DispatchFile(f *File) {
-	ctx.output <- f
-}
-
-func (ctx *link) CacheFile(inputFile, outputFile *File, depPaths ...string) {
-	err := ctx.chain.cacheWriteFile(ctx.plugin.Name(), inputFile, outputFile, depPaths)
-	if err != nil {
-		ctx.chain.fault(ctx.plugin.Name(), outputFile, err)
-	}
-}
-
-func (ctx *link) SrcDir() string {
-	return ctx.chain.srcDir
-}
-
-func (ctx *link) DstDir() string {
-	return ctx.chain.dstDir
 }
