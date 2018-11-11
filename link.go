@@ -7,7 +7,7 @@ import (
 )
 
 type link struct {
-	chain   *chain
+	chain   *Goldsmith
 	plugin  Plugin
 	filters []Filter
 	input   chan *File

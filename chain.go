@@ -3,24 +3,9 @@ package goldsmith
 import (
 	"os"
 	"path/filepath"
-	"sync"
 )
 
-type chain struct {
-	srcDir string
-	dstDir string
-
-	links    []*link
-	refs     map[string]bool
-	filters  []Filter
-	cache    *cache
-	complete bool
-
-	errors   []error
-	errorMtx sync.Mutex
-}
-
-func (c *chain) linkPlugin(plug Plugin) *link {
+func (c *Goldsmith) linkPlugin(plug Plugin) *link {
 	ctx := &link{chain: c, plugin: plug, output: make(chan *File)}
 	ctx.filters = append(ctx.filters, c.filters...)
 
@@ -32,7 +17,7 @@ func (c *chain) linkPlugin(plug Plugin) *link {
 	return ctx
 }
 
-func (c *chain) cleanupFiles() {
+func (c *Goldsmith) cleanupFiles() {
 	infos := make(chan fileInfo)
 	go scanDir(c.dstDir, infos)
 
@@ -46,7 +31,7 @@ func (c *chain) cleanupFiles() {
 	}
 }
 
-func (c *chain) exportFile(f *File) error {
+func (c *Goldsmith) exportFile(f *File) error {
 	if err := f.export(c.dstDir); err != nil {
 		return err
 	}
@@ -64,7 +49,7 @@ func (c *chain) exportFile(f *File) error {
 	return nil
 }
 
-func (c *chain) fault(name string, f *File, err error) {
+func (c *Goldsmith) fault(name string, f *File, err error) {
 	c.errorMtx.Lock()
 	defer c.errorMtx.Unlock()
 
@@ -76,73 +61,15 @@ func (c *chain) fault(name string, f *File, err error) {
 	c.errors = append(c.errors, ferr)
 }
 
-func (c *chain) cacheWriteFile(pluginName string, inputFile, outputFile *File, depPaths []string) error {
+func (c *Goldsmith) cacheWriteFile(pluginName string, inputFile, outputFile *File, depPaths []string) error {
 	return c.cache.writeFile(pluginName, inputFile, outputFile, depPaths)
 }
 
-func (c *chain) cacheReadFile(pluginName string, inputFile *File) (*File, error) {
+func (c *Goldsmith) cacheReadFile(pluginName string, inputFile *File) (*File, error) {
 	outputFile, err := c.cache.readFile(pluginName, inputFile)
 	if err != nil {
 		return nil, err
 	}
 
 	return outputFile, nil
-}
-
-//
-//	Goldsmith Implementation
-//
-
-func (c *chain) Chain(p Plugin) Goldsmith {
-	if c.complete {
-		panic("attempted reuse of goldsmith instance")
-	}
-
-	c.linkPlugin(p)
-	return c
-}
-
-func (c *chain) FilterPush(f Filter) Goldsmith {
-	if c.complete {
-		panic("attempted reuse of goldsmith instance")
-	}
-
-	c.filters = append(c.filters, f)
-	return c
-}
-
-func (c *chain) FilterPop() Goldsmith {
-	if c.complete {
-		panic("attempted reuse of goldsmith instance")
-	}
-
-	count := len(c.filters)
-	if count == 0 {
-		panic("attempted to pop empty filter stack")
-	}
-
-	c.filters = c.filters[:count-1]
-	return c
-}
-
-func (c *chain) End(dstDir string) []error {
-	if c.complete {
-		panic("attempted reuse of goldsmith instance")
-	}
-
-	c.dstDir = dstDir
-
-	for _, ctx := range c.links {
-		go ctx.step()
-	}
-
-	ctx := c.links[len(c.links)-1]
-	for f := range ctx.output {
-		c.exportFile(f)
-	}
-
-	c.cleanupFiles()
-	c.complete = true
-
-	return c.errors
 }

@@ -1,26 +1,87 @@
 package goldsmith
 
 import (
-	"fmt"
+	"sync"
 )
 
-type Goldsmith interface {
-	Chain(p Plugin) Goldsmith
-	FilterPush(f Filter) Goldsmith
-	FilterPop() Goldsmith
-	End(dstDir string) []error
+type Goldsmith struct {
+	srcDir string
+	dstDir string
+
+	links    []*link
+	refs     map[string]bool
+	filters  []Filter
+	cache    *cache
+	complete bool
+
+	errors   []error
+	errorMtx sync.Mutex
 }
 
-func Begin(srcDir string) Goldsmith {
-	gs := &chain{srcDir: srcDir, refs: make(map[string]bool)}
+func Begin(srcDir string) *Goldsmith {
+	gs := &Goldsmith{srcDir: srcDir, refs: make(map[string]bool)}
 	gs.Chain(new(loader))
 	return gs
 }
 
-func BeginCached(srcDir, cacheDir string) Goldsmith {
-	gs := &chain{srcDir: srcDir, cache: &cache{cacheDir}, refs: make(map[string]bool)}
+func BeginCached(srcDir, cacheDir string) *Goldsmith {
+	gs := &Goldsmith{srcDir: srcDir, cache: &cache{cacheDir}, refs: make(map[string]bool)}
 	gs.Chain(new(loader))
 	return gs
+}
+
+func (c *Goldsmith) Chain(p Plugin) *Goldsmith {
+	if c.complete {
+		panic("attempted reuse of goldsmith instance")
+	}
+
+	c.linkPlugin(p)
+	return c
+}
+
+func (c *Goldsmith) FilterPush(f Filter) *Goldsmith {
+	if c.complete {
+		panic("attempted reuse of goldsmith instance")
+	}
+
+	c.filters = append(c.filters, f)
+	return c
+}
+
+func (c *Goldsmith) FilterPop() *Goldsmith {
+	if c.complete {
+		panic("attempted reuse of goldsmith instance")
+	}
+
+	count := len(c.filters)
+	if count == 0 {
+		panic("attempted to pop empty filter stack")
+	}
+
+	c.filters = c.filters[:count-1]
+	return c
+}
+
+func (c *Goldsmith) End(dstDir string) []error {
+	if c.complete {
+		panic("attempted reuse of goldsmith instance")
+	}
+
+	c.dstDir = dstDir
+
+	for _, ctx := range c.links {
+		go ctx.step()
+	}
+
+	ctx := c.links[len(c.links)-1]
+	for f := range ctx.output {
+		c.exportFile(f)
+	}
+
+	c.cleanupFiles()
+	c.complete = true
+
+	return c.errors
 }
 
 type Context interface {
@@ -29,44 +90,4 @@ type Context interface {
 
 	SrcDir() string
 	DstDir() string
-}
-
-type Error struct {
-	Name string
-	Path string
-	Err  error
-}
-
-func (e Error) Error() string {
-	var path string
-	if len(e.Path) > 0 {
-		path = "@" + e.Path
-	}
-
-	return fmt.Sprintf("[%s%s]: %s", e.Name, path, e.Err.Error())
-}
-
-type Initializer interface {
-	Initialize(ctx Context) ([]Filter, error)
-}
-
-type Processor interface {
-	Process(ctx Context, f *File) error
-}
-
-type Finalizer interface {
-	Finalize(ctx Context) error
-}
-
-type Component interface {
-	Name() string
-}
-
-type Filter interface {
-	Component
-	Accept(ctx Context, f *File) (bool, error)
-}
-
-type Plugin interface {
-	Component
 }
