@@ -21,7 +21,7 @@ type chain struct {
 }
 
 func (c *chain) linkPlugin(plug Plugin) *link {
-	ctx := &link{chain: c, plugin: plug, output: make(chan *file)}
+	ctx := &link{chain: c, plugin: plug, output: make(chan *File)}
 	ctx.filters = append(ctx.filters, c.filters...)
 
 	if len(c.links) > 0 {
@@ -46,7 +46,7 @@ func (c *chain) cleanupFiles() {
 	}
 }
 
-func (c *chain) exportFile(f *file) error {
+func (c *chain) exportFile(f *File) error {
 	if err := f.export(c.dstDir); err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (c *chain) exportFile(f *file) error {
 	return nil
 }
 
-func (c *chain) fault(name string, f *file, err error) {
+func (c *chain) fault(name string, f *File, err error) {
 	c.errorMtx.Lock()
 	defer c.errorMtx.Unlock()
 
@@ -76,11 +76,11 @@ func (c *chain) fault(name string, f *file, err error) {
 	c.errors = append(c.errors, ferr)
 }
 
-func (c *chain) cacheWriteFile(pluginName string, inputFile, outputFile *file, depPaths []string) error {
+func (c *chain) cacheWriteFile(pluginName string, inputFile, outputFile *File, depPaths []string) error {
 	return c.cache.writeFile(pluginName, inputFile, outputFile, depPaths)
 }
 
-func (c *chain) cacheReadFile(pluginName string, inputFile *file) (File, error) {
+func (c *chain) cacheReadFile(pluginName string, inputFile *File) (*File, error) {
 	outputFile, err := c.cache.readFile(pluginName, inputFile)
 	if err != nil {
 		return nil, err

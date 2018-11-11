@@ -10,8 +10,8 @@ type link struct {
 	chain   *chain
 	plugin  Plugin
 	filters []Filter
-	input   chan *file
-	output  chan *file
+	input   chan *File
+	output  chan *File
 }
 
 func (ctx *link) step() {
@@ -75,14 +75,14 @@ func (ctx *link) step() {
 //	Context Implementation
 //
 
-func (ctx *link) DispatchFile(f File) {
-	ctx.output <- f.(*file)
+func (ctx *link) DispatchFile(f *File) {
+	ctx.output <- f
 }
 
-func (ctx *link) CacheFile(inputFile, outputFile File, depPaths ...string) {
-	err := ctx.chain.cacheWriteFile(ctx.plugin.Name(), inputFile.(*file), outputFile.(*file), depPaths)
+func (ctx *link) CacheFile(inputFile, outputFile *File, depPaths ...string) {
+	err := ctx.chain.cacheWriteFile(ctx.plugin.Name(), inputFile, outputFile, depPaths)
 	if err != nil {
-		ctx.chain.fault(ctx.plugin.Name(), outputFile.(*file), err)
+		ctx.chain.fault(ctx.plugin.Name(), outputFile, err)
 	}
 }
 

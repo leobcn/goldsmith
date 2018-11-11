@@ -19,7 +19,7 @@ func (*loader) Initialize(ctx Context) ([]Filter, error) {
 
 		relPath, _ := filepath.Rel(ctx.SrcDir(), info.path)
 
-		f := &file{
+		f := &File{
 			path:    relPath,
 			Meta:    make(map[string]interface{}),
 			modTime: info.ModTime(),

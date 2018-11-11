@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-type file struct {
+type File struct {
 	path string
 	Meta map[string]interface{}
 
@@ -22,8 +22,8 @@ type file struct {
 	asset string
 }
 
-func NewFileFromData(path string, data []byte, modTime time.Time) File {
-	return &file{
+func NewFileFromData(path string, data []byte, modTime time.Time) *File {
+	return &File{
 		path:    path,
 		Meta:    make(map[string]interface{}),
 		reader:  bytes.NewReader(data),
@@ -32,7 +32,7 @@ func NewFileFromData(path string, data []byte, modTime time.Time) File {
 	}
 }
 
-func NewFileFromAsset(path, asset string) (File, error) {
+func NewFileFromAsset(path, asset string) (*File, error) {
 	info, err := os.Stat(asset)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func NewFileFromAsset(path, asset string) (File, error) {
 		return nil, errors.New("assets must be files")
 	}
 
-	f := &file{
+	f := &File{
 		path:    path,
 		Meta:    make(map[string]interface{}),
 		size:    info.Size(),
@@ -53,7 +53,74 @@ func NewFileFromAsset(path, asset string) (File, error) {
 	return f, nil
 }
 
-func (f *file) export(dstDir string) error {
+func (f *File) Path() string {
+	return f.path
+}
+
+func (f *File) Name() string {
+	return path.Base(f.path)
+}
+
+func (f *File) Dir() string {
+	return path.Dir(f.path)
+}
+
+func (f *File) Ext() string {
+	return path.Ext(f.path)
+}
+
+func (f *File) Size() int64 {
+	return f.size
+}
+
+func (f *File) ModTime() time.Time {
+	return f.modTime
+}
+
+func (f *File) Value(key string) (interface{}, bool) {
+	value, ok := f.Meta[key]
+	return value, ok
+}
+
+func (f *File) SetValue(key string, value interface{}) {
+	f.Meta[key] = value
+}
+
+func (f *File) InheritValues(src *File) {
+	for name, value := range src.Meta {
+		f.SetValue(name, value)
+	}
+}
+
+func (f *File) Read(p []byte) (int, error) {
+	if err := f.cache(); err != nil {
+		return 0, err
+	}
+
+	return f.reader.Read(p)
+}
+
+func (f *File) WriteTo(w io.Writer) (int64, error) {
+	if err := f.cache(); err != nil {
+		return 0, err
+	}
+
+	return f.reader.WriteTo(w)
+}
+
+func (f *File) Seek(offset int64, whence int) (int64, error) {
+	if f.reader == nil && offset == 0 && (whence == os.SEEK_SET || whence == os.SEEK_CUR) {
+		return 0, nil
+	}
+
+	if err := f.cache(); err != nil {
+		return 0, err
+	}
+
+	return f.reader.Seek(offset, whence)
+}
+
+func (f *File) export(dstDir string) error {
 	dstPath := filepath.Join(dstDir, f.path)
 	if dstInfo, err := os.Stat(dstPath); err == nil && dstInfo.ModTime().Unix() >= f.ModTime().Unix() {
 		return nil
@@ -91,7 +158,7 @@ func (f *file) export(dstDir string) error {
 	return nil
 }
 
-func (f *file) cache() error {
+func (f *File) cache() error {
 	if f.reader != nil {
 		return nil
 	}
@@ -103,76 +170,4 @@ func (f *file) cache() error {
 
 	f.reader = bytes.NewReader(data)
 	return nil
-}
-
-//
-//	File Implementation
-//
-
-func (f *file) Path() string {
-	return f.path
-}
-
-func (f *file) Name() string {
-	return path.Base(f.path)
-}
-
-func (f *file) Dir() string {
-	return path.Dir(f.path)
-}
-
-func (f *file) Ext() string {
-	return path.Ext(f.path)
-}
-
-func (f *file) Size() int64 {
-	return f.size
-}
-
-func (f *file) ModTime() time.Time {
-	return f.modTime
-}
-
-func (f *file) Value(key string) (interface{}, bool) {
-	value, ok := f.Meta[key]
-	return value, ok
-}
-
-func (f *file) SetValue(key string, value interface{}) {
-	f.Meta[key] = value
-}
-
-func (f *file) InheritValues(src File) {
-	rf := src.(*file)
-	for name, value := range rf.Meta {
-		f.SetValue(name, value)
-	}
-}
-
-func (f *file) Read(p []byte) (int, error) {
-	if err := f.cache(); err != nil {
-		return 0, err
-	}
-
-	return f.reader.Read(p)
-}
-
-func (f *file) WriteTo(w io.Writer) (int64, error) {
-	if err := f.cache(); err != nil {
-		return 0, err
-	}
-
-	return f.reader.WriteTo(w)
-}
-
-func (f *file) Seek(offset int64, whence int) (int64, error) {
-	if f.reader == nil && offset == 0 && (whence == os.SEEK_SET || whence == os.SEEK_CUR) {
-		return 0, nil
-	}
-
-	if err := f.cache(); err != nil {
-		return 0, err
-	}
-
-	return f.reader.Seek(offset, whence)
 }

@@ -2,8 +2,6 @@ package goldsmith
 
 import (
 	"fmt"
-	"io"
-	"time"
 )
 
 type Goldsmith interface {
@@ -25,26 +23,9 @@ func BeginCached(srcDir, cacheDir string) Goldsmith {
 	return gs
 }
 
-type File interface {
-	Path() string
-	Name() string
-	Dir() string
-	Ext() string
-	Size() int64
-	ModTime() time.Time
-
-	Value(key string) (interface{}, bool)
-	SetValue(key string, value interface{})
-	InheritValues(src File)
-
-	Read(p []byte) (int, error)
-	WriteTo(w io.Writer) (int64, error)
-	Seek(offset int64, whence int) (int64, error)
-}
-
 type Context interface {
-	DispatchFile(f File)
-	CacheFile(inputFile, outputFile File, depPaths ...string)
+	DispatchFile(f *File)
+	CacheFile(inputFile, outputFile *File, depPaths ...string)
 
 	SrcDir() string
 	DstDir() string
@@ -70,7 +51,7 @@ type Initializer interface {
 }
 
 type Processor interface {
-	Process(ctx Context, f File) error
+	Process(ctx Context, f *File) error
 }
 
 type Finalizer interface {
@@ -83,7 +64,7 @@ type Component interface {
 
 type Filter interface {
 	Component
-	Accept(ctx Context, f File) (bool, error)
+	Accept(ctx Context, f *File) (bool, error)
 }
 
 type Plugin interface {

@@ -29,7 +29,7 @@ func (c *cache) buildCachePaths(name, path string) (string, string, string) {
 	return dataPath, metaPath, depsPath
 }
 
-func (c *cache) readFile(pluginName string, inputFile *file) (File, error) {
+func (c *cache) readFile(pluginName string, inputFile *File) (*File, error) {
 	if len(c.baseDir) == 0 {
 		return nil, nil
 	}
@@ -81,7 +81,7 @@ func (c *cache) readFileMeta(path string) (map[string]interface{}, error) {
 	return meta, nil
 }
 
-func (c *cache) writeFile(pluginName string, inputFile, outputFile *file, depPaths []string) error {
+func (c *cache) writeFile(pluginName string, inputFile, outputFile *File, depPaths []string) error {
 	if len(c.baseDir) == 0 {
 		return nil
 	}
@@ -105,7 +105,7 @@ func (c *cache) writeFile(pluginName string, inputFile, outputFile *file, depPat
 	return nil
 }
 
-func (c *cache) writeFileData(path string, f *file) error {
+func (c *cache) writeFileData(path string, f *File) error {
 	fp, err := os.Create(path)
 	if err != nil {
 		return err
@@ -119,7 +119,7 @@ func (c *cache) writeFileData(path string, f *file) error {
 	return nil
 }
 
-func (c *cache) writeFileMeta(path string, f *file) error {
+func (c *cache) writeFileMeta(path string, f *File) error {
 	json, err := json.Marshal(f.Meta)
 	if err != nil {
 		return err
