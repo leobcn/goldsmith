@@ -80,7 +80,7 @@ func (ctx *link) DispatchFile(f File) {
 }
 
 func (ctx *link) CacheFile(inputFile, outputFile File, depPaths ...string) {
-	err := ctx.chain.cacheFile(ctx.plugin.Name(), inputFile.(*file), outputFile.(*file), depPaths)
+	err := ctx.chain.cacheWriteFile(ctx.plugin.Name(), inputFile.(*file), outputFile.(*file), depPaths)
 	if err != nil {
 		ctx.chain.fault(ctx.plugin.Name(), outputFile.(*file), err)
 	}

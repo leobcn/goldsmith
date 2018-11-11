@@ -1,11 +1,8 @@
 package goldsmith
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 	"io"
-	"os"
 	"time"
 )
 
@@ -43,37 +40,6 @@ type File interface {
 	Read(p []byte) (int, error)
 	WriteTo(w io.Writer) (int64, error)
 	Seek(offset int64, whence int) (int64, error)
-}
-
-func NewFileFromData(path string, data []byte, modTime time.Time) File {
-	return &file{
-		path:    path,
-		Meta:    make(map[string]interface{}),
-		reader:  bytes.NewReader(data),
-		size:    int64(len(data)),
-		modTime: modTime,
-	}
-}
-
-func NewFileFromAsset(path, asset string) (File, error) {
-	info, err := os.Stat(asset)
-	if err != nil {
-		return nil, err
-	}
-
-	if info.IsDir() {
-		return nil, errors.New("assets must be files")
-	}
-
-	f := &file{
-		path:    path,
-		Meta:    make(map[string]interface{}),
-		size:    info.Size(),
-		modTime: info.ModTime(),
-		asset:   asset,
-	}
-
-	return f, nil
 }
 
 type Context interface {

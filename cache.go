@@ -29,9 +29,9 @@ func (c *cache) buildCachePaths(name, path string) (string, string, string) {
 	return dataPath, metaPath, depsPath
 }
 
-func (c *cache) readFile(pluginName string, inputFile *file) (string, map[string]interface{}, error) {
+func (c *cache) readFile(pluginName string, inputFile *file) (File, error) {
 	if len(c.baseDir) == 0 {
-		return "", nil, nil
+		return nil, nil
 	}
 
 	dataPath, metaPath, depsPath := c.buildCachePaths(pluginName, inputFile.Path())
@@ -40,15 +40,15 @@ func (c *cache) readFile(pluginName string, inputFile *file) (string, map[string
 	depPaths = append(depPaths, dataPath, metaPath)
 
 	if modTime, err := newestFile(depPaths); err != nil || inputFile.ModTime().After(modTime) {
-		return "", nil, err
+		return nil, err
 	}
 
-	meta, err := c.readFileMeta(metaPath)
+	_, err := c.readFileMeta(metaPath)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
-	return dataPath, meta, nil
+	return nil, nil
 }
 
 func (c *cache) readFileDeps(path string) ([]string, error) {

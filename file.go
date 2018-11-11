@@ -2,6 +2,7 @@ package goldsmith
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"io/ioutil"
 	"os"
@@ -19,6 +20,37 @@ type file struct {
 	modTime time.Time
 
 	asset string
+}
+
+func NewFileFromData(path string, data []byte, modTime time.Time) File {
+	return &file{
+		path:    path,
+		Meta:    make(map[string]interface{}),
+		reader:  bytes.NewReader(data),
+		size:    int64(len(data)),
+		modTime: modTime,
+	}
+}
+
+func NewFileFromAsset(path, asset string) (File, error) {
+	info, err := os.Stat(asset)
+	if err != nil {
+		return nil, err
+	}
+
+	if info.IsDir() {
+		return nil, errors.New("assets must be files")
+	}
+
+	f := &file{
+		path:    path,
+		Meta:    make(map[string]interface{}),
+		size:    info.Size(),
+		modTime: info.ModTime(),
+		asset:   asset,
+	}
+
+	return f, nil
 }
 
 func (f *file) export(dstDir string) error {
