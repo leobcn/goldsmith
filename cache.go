@@ -39,8 +39,7 @@ func (c *cache) readFile(pluginName string, inputFile *file) (string, map[string
 	depPaths, _ := c.readFileDeps(depsPath)
 	depPaths = append(depPaths, dataPath, metaPath)
 
-	modTime, err := newestFile(depPaths)
-	if err != nil || inputFile.ModTime().After(modTime) {
+	if modTime, err := newestFile(depPaths); err != nil || inputFile.ModTime().After(modTime) {
 		return "", nil, err
 	}
 
@@ -69,13 +68,7 @@ func (c *cache) readFileDeps(path string) ([]string, error) {
 }
 
 func (c *cache) readFileMeta(path string) (map[string]interface{}, error) {
-	fp, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer fp.Close()
-
-	data, err := ioutil.ReadAll(fp)
+	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -94,12 +87,15 @@ func (c *cache) writeFile(pluginName string, inputFile, outputFile *file, depPat
 	}
 
 	dataPath, metaPath, depsPath := c.buildCachePaths(pluginName, inputFile.Path())
+
 	if err := c.writeFileData(dataPath, outputFile); err != nil {
 		return err
 	}
+
 	if err := c.writeFileMeta(metaPath, outputFile); err != nil {
 		return err
 	}
+
 	if len(depPaths) > 0 {
 		if err := c.writeFileDeps(depsPath, depPaths); err != nil {
 			return err
@@ -124,22 +120,12 @@ func (c *cache) writeFileData(path string, f *file) error {
 }
 
 func (c *cache) writeFileMeta(path string, f *file) error {
-	metaJson, err := json.Marshal(f.Meta)
+	json, err := json.Marshal(f.Meta)
 	if err != nil {
 		return err
 	}
 
-	fp, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer fp.Close()
-
-	if _, err := fp.Write(metaJson); err != nil {
-		return err
-	}
-
-	return nil
+	return ioutil.WriteFile(path, json, 0666)
 }
 
 func (c *cache) writeFileDeps(path string, depPaths []string) error {
