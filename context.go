@@ -7,15 +7,16 @@ import (
 )
 
 type Context struct {
-	chain   *Goldsmith
-	plugin  Plugin
-	filters []Filter
-	input   chan *File
-	output  chan *File
+	chain  *Goldsmith
+	plugin Plugin
+
+	fileFilters []Filter
+	inputFiles  chan *File
+	outputFiles chan *File
 }
 
 func (ctx *Context) DispatchFile(f *File) {
-	ctx.output <- f
+	ctx.outputFiles <- f
 }
 
 func (ctx *Context) CacheFile(inputFile, outputFile *File, depPaths ...string) {
@@ -26,15 +27,15 @@ func (ctx *Context) CacheFile(inputFile, outputFile *File, depPaths ...string) {
 }
 
 func (ctx *Context) SrcDir() string {
-	return ctx.chain.srcDir
+	return ctx.chain.sourceDir
 }
 
 func (ctx *Context) DstDir() string {
-	return ctx.chain.dstDir
+	return ctx.chain.targetDir
 }
 
 func (ctx *Context) step() {
-	defer close(ctx.output)
+	defer close(ctx.outputFiles)
 
 	var err error
 	var filters []Filter
@@ -46,7 +47,7 @@ func (ctx *Context) step() {
 		}
 	}
 
-	if ctx.input != nil {
+	if ctx.inputFiles != nil {
 		processor, _ := ctx.plugin.(Processor)
 
 		var wg sync.WaitGroup
@@ -54,9 +55,9 @@ func (ctx *Context) step() {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				for f := range ctx.input {
+				for f := range ctx.inputFiles {
 					accept := processor != nil
-					for _, filter := range append(ctx.filters, filters...) {
+					for _, filter := range append(ctx.fileFilters, filters...) {
 						if accept, err = filter.Accept(ctx, f); err != nil {
 							ctx.chain.fault(filter.Name(), f, err)
 							return
@@ -75,7 +76,7 @@ func (ctx *Context) step() {
 							ctx.chain.fault(ctx.plugin.Name(), f, err)
 						}
 					} else {
-						ctx.output <- f
+						ctx.outputFiles <- f
 					}
 				}
 			}()

@@ -7,150 +7,113 @@ import (
 )
 
 type Goldsmith struct {
-	srcDir string
-	dstDir string
+	sourceDir string
+	targetDir string
 
-	links    []*Context
-	refs     map[string]bool
-	filters  []Filter
-	cache    *cache
-	complete bool
+	pluginCtxs []*Context
+
+	fileRefs    map[string]bool
+	fileFilters []Filter
+	fileCache   *cache
 
 	errors   []error
 	errorMtx sync.Mutex
 }
 
-func Begin(srcDir string) *Goldsmith {
-	gs := &Goldsmith{srcDir: srcDir, refs: make(map[string]bool)}
+func Begin(srcDir, cacheDir string) *Goldsmith {
+	gs := &Goldsmith{sourceDir: srcDir, fileCache: &cache{cacheDir}, fileRefs: make(map[string]bool)}
 	gs.Chain(new(loader))
 	return gs
 }
 
-func BeginCached(srcDir, cacheDir string) *Goldsmith {
-	gs := &Goldsmith{srcDir: srcDir, cache: &cache{cacheDir}, refs: make(map[string]bool)}
-	gs.Chain(new(loader))
+func (gs *Goldsmith) Chain(plugin Plugin) *Goldsmith {
+	gs.linkPlugin(plugin)
 	return gs
 }
 
-func (c *Goldsmith) Chain(p Plugin) *Goldsmith {
-	if c.complete {
-		panic("attempted reuse of goldsmith instance")
-	}
-
-	c.linkPlugin(p)
-	return c
+func (gs *Goldsmith) FilterPush(filter Filter) *Goldsmith {
+	gs.fileFilters = append(gs.fileFilters, filter)
+	return gs
 }
 
-func (c *Goldsmith) FilterPush(f Filter) *Goldsmith {
-	if c.complete {
-		panic("attempted reuse of goldsmith instance")
-	}
-
-	c.filters = append(c.filters, f)
-	return c
-}
-
-func (c *Goldsmith) FilterPop() *Goldsmith {
-	if c.complete {
-		panic("attempted reuse of goldsmith instance")
-	}
-
-	count := len(c.filters)
+func (gs *Goldsmith) FilterPop() *Goldsmith {
+	count := len(gs.fileFilters)
 	if count == 0 {
 		panic("attempted to pop empty filter stack")
 	}
 
-	c.filters = c.filters[:count-1]
-	return c
+	gs.fileFilters = gs.fileFilters[:count-1]
+	return gs
 }
 
-func (c *Goldsmith) End(dstDir string) []error {
-	if c.complete {
-		panic("attempted reuse of goldsmith instance")
-	}
+func (gs *Goldsmith) End(targetDir string) []error {
+	gs.targetDir = targetDir
 
-	c.dstDir = dstDir
-
-	for _, ctx := range c.links {
+	for _, ctx := range gs.pluginCtxs {
 		go ctx.step()
 	}
 
-	ctx := c.links[len(c.links)-1]
-	for f := range ctx.output {
-		c.exportFile(f)
+	ctx := gs.pluginCtxs[len(gs.pluginCtxs)-1]
+	for file := range ctx.outputFiles {
+		gs.exportFile(file)
 	}
 
-	c.cleanupFiles()
-	c.complete = true
-
-	return c.errors
+	gs.cleanupFiles()
+	return gs.errors
 }
 
-func (c *Goldsmith) linkPlugin(plug Plugin) *Context {
-	ctx := &Context{chain: c, plugin: plug, output: make(chan *File)}
-	ctx.filters = append(ctx.filters, c.filters...)
+func (gs *Goldsmith) linkPlugin(plug Plugin) *Context {
+	ctx := &Context{chain: gs, plugin: plug, outputFiles: make(chan *File)}
+	ctx.fileFilters = append(ctx.fileFilters, gs.fileFilters...)
 
-	if len(c.links) > 0 {
-		ctx.input = c.links[len(c.links)-1].output
+	if len(gs.pluginCtxs) > 0 {
+		ctx.inputFiles = gs.pluginCtxs[len(gs.pluginCtxs)-1].outputFiles
 	}
 
-	c.links = append(c.links, ctx)
+	gs.pluginCtxs = append(gs.pluginCtxs, ctx)
 	return ctx
 }
 
-func (c *Goldsmith) cleanupFiles() {
+func (gs *Goldsmith) cleanupFiles() {
 	infos := make(chan fileInfo)
-	go scanDir(c.dstDir, infos)
+	go scanDir(gs.targetDir, infos)
 
 	for info := range infos {
-		relPath, _ := filepath.Rel(c.dstDir, info.path)
-		if contained, _ := c.refs[relPath]; contained {
-			continue
+		relPath, _ := filepath.Rel(gs.targetDir, info.path)
+		if contained, _ := gs.fileRefs[relPath]; !contained {
+			os.RemoveAll(info.path)
 		}
-
-		os.RemoveAll(info.path)
 	}
 }
 
-func (c *Goldsmith) exportFile(f *File) error {
-	if err := f.export(c.dstDir); err != nil {
+func (gs *Goldsmith) exportFile(file *File) error {
+	if err := file.export(gs.targetDir); err != nil {
 		return err
 	}
 
-	pathSeg := cleanPath(f.path)
-	for {
-		c.refs[pathSeg] = true
-		if pathSeg == "." {
-			break
-		}
-
-		pathSeg = filepath.Dir(pathSeg)
+	for pathSeg := cleanPath(file.path); pathSeg != "."; pathSeg = filepath.Dir(pathSeg) {
+		gs.fileRefs[pathSeg] = true
 	}
 
 	return nil
 }
 
-func (c *Goldsmith) fault(name string, f *File, err error) {
-	c.errorMtx.Lock()
-	defer c.errorMtx.Unlock()
-
-	ferr := &Error{Name: name, Err: err}
-	if f != nil {
-		ferr.Path = f.path
-	}
-
-	c.errors = append(c.errors, ferr)
+func (gs *Goldsmith) cacheWriteFile(pluginName string, inputFile, outputFile *File, depPaths []string) error {
+	return gs.fileCache.writeFile(pluginName, inputFile, outputFile, depPaths)
 }
 
-func (c *Goldsmith) cacheWriteFile(pluginName string, inputFile, outputFile *File, depPaths []string) error {
-	return c.cache.writeFile(pluginName, inputFile, outputFile, depPaths)
+func (gs *Goldsmith) cacheReadFile(pluginName string, inputFile *File) (*File, error) {
+	return gs.fileCache.readFile(pluginName, inputFile)
 }
 
-func (c *Goldsmith) cacheReadFile(pluginName string, inputFile *File) (*File, error) {
-	outputFile, err := c.cache.readFile(pluginName, inputFile)
-	if err != nil {
-		return nil, err
+func (gs *Goldsmith) fault(pluginName string, file *File, err error) {
+	gs.errorMtx.Lock()
+	defer gs.errorMtx.Unlock()
+
+	faultError := &Error{Name: pluginName, Err: err}
+	if file != nil {
+		faultError.Path = file.path
 	}
 
-	return outputFile, nil
+	gs.errors = append(gs.errors, faultError)
 }
