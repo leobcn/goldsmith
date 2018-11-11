@@ -3,6 +3,7 @@ package goldsmith
 import (
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type fileInfo struct {
@@ -32,4 +33,20 @@ func scanDir(root string, infos chan fileInfo) {
 		infos <- fileInfo{FileInfo: info, path: path}
 		return nil
 	})
+}
+
+func newestFile(paths []string) (time.Time, error) {
+	var modTime time.Time
+	for _, path := range paths {
+		info, err := os.Stat(path)
+		if err != nil {
+			return modTime, err
+		}
+
+		if info.ModTime().After(modTime) {
+			modTime = info.ModTime()
+		}
+	}
+
+	return modTime, nil
 }

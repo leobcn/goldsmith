@@ -79,8 +79,8 @@ func (ctx *link) DispatchFile(f File) {
 	ctx.output <- f.(*file)
 }
 
-func (ctx *link) CacheFile(inputPath string, outputFile File, depPaths ...string) {
-	err := ctx.chain.cacheFile(ctx.plugin.Name(), inputPath, outputFile.(*file), depPaths)
+func (ctx *link) CacheFile(inputFile, outputFile File, depPaths ...string) {
+	err := ctx.chain.cacheFile(ctx.plugin.Name(), inputFile.(*file), outputFile.(*file), depPaths)
 	if err != nil {
 		ctx.chain.fault(ctx.plugin.Name(), outputFile.(*file), err)
 	}

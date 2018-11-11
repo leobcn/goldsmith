@@ -76,8 +76,8 @@ func (c *chain) fault(name string, f *file, err error) {
 	c.errors = append(c.errors, ferr)
 }
 
-func (c *chain) cacheFile(pluginName, inputPath string, outputFile *file, depPaths []string) error {
-	return c.cache.writeFile(pluginName, inputPath, outputFile, depPaths)
+func (c *chain) cacheFile(pluginName string, inputFile, outputFile *file, depPaths []string) error {
+	return c.cache.writeFile(pluginName, inputFile, outputFile, depPaths)
 }
 
 //

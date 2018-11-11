@@ -78,7 +78,7 @@ func NewFileFromAsset(path, asset string) (File, error) {
 
 type Context interface {
 	DispatchFile(f File)
-	CacheFile(inputPath string, outputFile File, depPaths ...string)
+	CacheFile(inputFile, outputFile File, depPaths ...string)
 
 	SrcDir() string
 	DstDir() string
