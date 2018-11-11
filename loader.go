@@ -8,7 +8,7 @@ func (*loader) Name() string {
 	return "loader"
 }
 
-func (*loader) Initialize(ctx Context) ([]Filter, error) {
+func (*loader) Initialize(ctx *Context) ([]Filter, error) {
 	infos := make(chan fileInfo)
 	go scanDir(ctx.SrcDir(), infos)
 
