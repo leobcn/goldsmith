@@ -13,7 +13,7 @@ import (
 
 type File struct {
 	relPath string
-	absPath string
+	extPath string
 
 	Meta map[string]interface{}
 
@@ -44,7 +44,7 @@ func NewFileFromAsset(path, asset string) (*File, error) {
 
 	file := &File{
 		relPath: path,
-		absPath: asset,
+		extPath: asset,
 		Meta:    make(map[string]interface{}),
 		modTime: info.ModTime(),
 		size:    info.Size(),
@@ -137,7 +137,7 @@ func (f *File) export(targetDir string) error {
 	defer fw.Close()
 
 	if f.reader == nil {
-		fr, err := os.Open(f.absPath)
+		fr, err := os.Open(f.extPath)
 		if err != nil {
 			return err
 		}
@@ -163,7 +163,7 @@ func (f *File) load() error {
 		return nil
 	}
 
-	data, err := ioutil.ReadFile(f.absPath)
+	data, err := ioutil.ReadFile(f.extPath)
 	if err != nil {
 		return err
 	}
@@ -188,10 +188,10 @@ func cleanPath(path string) string {
 	return filepath.Clean(path)
 }
 
-func scanDir(root string, infos chan fileInfo) {
+func scanDir(rootDir string, infos chan fileInfo) {
 	defer close(infos)
 
-	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+	filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -201,7 +201,7 @@ func scanDir(root string, infos chan fileInfo) {
 	})
 }
 
-func newestFile(paths []string) (time.Time, error) {
+func findNewest(paths []string) (time.Time, error) {
 	var modTime time.Time
 	for _, path := range paths {
 		info, err := os.Stat(path)

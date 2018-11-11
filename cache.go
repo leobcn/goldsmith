@@ -39,7 +39,7 @@ func (c *cache) readFile(pluginName string, inputFile *File) (*File, error) {
 	depPaths, _ := c.readFileDeps(depsPath)
 	depPaths = append(depPaths, dataPath, metaPath)
 
-	if modTime, err := newestFile(depPaths); err != nil || inputFile.ModTime().After(modTime) {
+	if modTime, err := findNewest(depPaths); err != nil || inputFile.ModTime().After(modTime) {
 		return nil, err
 	}
 

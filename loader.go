@@ -24,7 +24,7 @@ func (*loader) Initialize(ctx *Context) ([]Filter, error) {
 			Meta:    make(map[string]interface{}),
 			modTime: info.ModTime(),
 			size:    info.Size(),
-			absPath: info.path,
+			extPath: info.path,
 		}
 
 		ctx.DispatchFile(file)
