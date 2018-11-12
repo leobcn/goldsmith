@@ -79,6 +79,10 @@ func (gs *Goldsmith) cleanupFiles() {
 	go scanDir(gs.targetDir, infos)
 
 	for info := range infos {
+		if info.path == gs.targetDir {
+			continue
+		}
+
 		relPath, _ := filepath.Rel(gs.targetDir, info.path)
 		if contained, _ := gs.fileRefs[relPath]; !contained {
 			os.RemoveAll(info.path)
