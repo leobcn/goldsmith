@@ -7,7 +7,7 @@ import (
 )
 
 type Context struct {
-	chain  *Goldsmith
+	gs     *Goldsmith
 	plugin Plugin
 
 	fileFilters []Filter
@@ -20,18 +20,10 @@ func (ctx *Context) DispatchFile(f *File) {
 }
 
 func (ctx *Context) CacheFile(inputFile, outputFile *File, depPaths ...string) {
-	err := ctx.chain.cacheWriteFile(ctx.plugin.Name(), inputFile, outputFile, depPaths)
+	err := ctx.gs.cacheWriteFile(ctx.plugin.Name(), inputFile, outputFile, depPaths)
 	if err != nil {
-		ctx.chain.fault(ctx.plugin.Name(), outputFile, err)
+		ctx.gs.fault(ctx.plugin.Name(), outputFile, err)
 	}
-}
-
-func (ctx *Context) SrcDir() string {
-	return ctx.chain.sourceDir
-}
-
-func (ctx *Context) DstDir() string {
-	return ctx.chain.targetDir
 }
 
 func (ctx *Context) step() {
@@ -42,7 +34,7 @@ func (ctx *Context) step() {
 	if initializer, ok := ctx.plugin.(Initializer); ok {
 		filters, err = initializer.Initialize(ctx)
 		if err != nil {
-			ctx.chain.fault(ctx.plugin.Name(), nil, err)
+			ctx.gs.fault(ctx.plugin.Name(), nil, err)
 			return
 		}
 	}
@@ -55,11 +47,11 @@ func (ctx *Context) step() {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				for f := range ctx.inputFiles {
+				for file := range ctx.inputFiles {
 					accept := processor != nil
 					for _, filter := range append(ctx.fileFilters, filters...) {
-						if accept, err = filter.Accept(ctx, f); err != nil {
-							ctx.chain.fault(filter.Name(), f, err)
+						if accept, err = filter.Accept(ctx, file); err != nil {
+							ctx.gs.fault(filter.Name(), file, err)
 							return
 						}
 
@@ -69,14 +61,14 @@ func (ctx *Context) step() {
 					}
 
 					if accept {
-						if _, err := f.Seek(0, os.SEEK_SET); err != nil {
-							ctx.chain.fault("core", f, err)
+						if _, err := file.Seek(0, os.SEEK_SET); err != nil {
+							ctx.gs.fault("core", file, err)
 						}
-						if err := processor.Process(ctx, f); err != nil {
-							ctx.chain.fault(ctx.plugin.Name(), f, err)
+						if err := processor.Process(ctx, file); err != nil {
+							ctx.gs.fault(ctx.plugin.Name(), file, err)
 						}
 					} else {
-						ctx.outputFiles <- f
+						ctx.outputFiles <- file
 					}
 				}
 			}()
@@ -86,7 +78,7 @@ func (ctx *Context) step() {
 
 	if finalizer, ok := ctx.plugin.(Finalizer); ok {
 		if err := finalizer.Finalize(ctx); err != nil {
-			ctx.chain.fault(ctx.plugin.Name(), nil, err)
+			ctx.gs.fault(ctx.plugin.Name(), nil, err)
 		}
 	}
 }

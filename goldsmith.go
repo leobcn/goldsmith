@@ -63,7 +63,7 @@ func (gs *Goldsmith) End(targetDir string) []error {
 }
 
 func (gs *Goldsmith) linkPlugin(plug Plugin) *Context {
-	ctx := &Context{chain: gs, plugin: plug, outputFiles: make(chan *File)}
+	ctx := &Context{gs: gs, plugin: plug, outputFiles: make(chan *File)}
 	ctx.fileFilters = append(ctx.fileFilters, gs.fileFilters...)
 
 	if len(gs.pluginCtxs) > 0 {
