@@ -20,7 +20,7 @@ func (ctx *Context) DispatchFile(f *File) {
 }
 
 func (ctx *Context) CacheFile(inputFile, outputFile *File, depPaths ...string) {
-	err := ctx.gs.cacheWriteFile(ctx.plugin.Name(), inputFile, outputFile, depPaths)
+	err := ctx.gs.cacheWriteFile(ctx, inputFile, outputFile, depPaths)
 	if err != nil {
 		ctx.gs.fault(ctx.plugin.Name(), outputFile, err)
 	}

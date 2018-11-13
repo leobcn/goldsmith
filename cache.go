@@ -1,9 +1,10 @@
 package goldsmith
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"hash/fnv"
+	"hash/crc32"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -19,26 +20,30 @@ type cacheEntry struct {
 	DepPaths []string
 }
 
-func (c *cache) buildCachePaths(name, path string) (string, string) {
-	hash := fnv.New32a()
-	hash.Write([]byte(name))
-	hash.Write([]byte(path))
-	sum := hash.Sum32()
+func (c *cache) buildCachePaths(context *Context, file *File) (string, string) {
+	fileHashBytes := make([]byte, 4)
+	binary.LittleEndian.PutUint32(fileHashBytes, uint32(file.Hash()))
 
-	ext := filepath.Ext(path)
+	hash := crc32.NewIEEE()
+	hash.Write([]byte(context.plugin.Name()))
+	hash.Write([]byte(file.Path()))
+	hash.Write(fileHashBytes)
 
-	dataPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_data%s", sum, ext))
-	entryPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_entry.json", sum))
+	stateHash := hash.Sum32()
+	fileExt := filepath.Ext(file.Path())
+
+	dataPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_data%s", stateHash, fileExt))
+	entryPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_entry.json", stateHash))
 
 	return dataPath, entryPath
 }
 
-func (c *cache) readFile(pluginName string, inputFile *File) (*File, error) {
+func (c *cache) readFile(context *Context, inputFile *File) (*File, error) {
 	if len(c.baseDir) == 0 {
 		return nil, nil
 	}
 
-	dataPath, entryPath := c.buildCachePaths(pluginName, inputFile.Path())
+	dataPath, entryPath := c.buildCachePaths(context, inputFile)
 
 	entry, err := c.readFileEntry(entryPath)
 	if err != nil {
@@ -77,12 +82,12 @@ func (c *cache) readFileEntry(path string) (*cacheEntry, error) {
 	return &entry, nil
 }
 
-func (c *cache) writeFile(pluginName string, inputFile, outputFile *File, depPaths []string) error {
+func (c *cache) writeFile(context *Context, inputFile, outputFile *File, depPaths []string) error {
 	if len(c.baseDir) == 0 {
 		return nil
 	}
 
-	dataPath, entryPath := c.buildCachePaths(pluginName, inputFile.Path())
+	dataPath, entryPath := c.buildCachePaths(context, inputFile)
 
 	if err := c.writeFileData(dataPath, outputFile); err != nil {
 		return err
