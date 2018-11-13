@@ -25,9 +25,7 @@ func (c *cache) buildCachePaths(context *Context, file *File) (string, string) {
 	hash.Write([]byte(file.Path()))
 
 	stateHash := hash.Sum32()
-	fileExt := filepath.Ext(file.Path())
-
-	dataPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_data%s", stateHash, fileExt))
+	dataPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_data%s", stateHash, filepath.Ext(file.Path())))
 	entryPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_entry.json", stateHash))
 
 	return dataPath, entryPath
@@ -48,6 +46,9 @@ func (c *cache) readFile(context *Context, inputFile *File) (*File, error) {
 	outputFile, err := NewFileFromAsset(entry.RelPath, dataPath)
 	if err != nil {
 		return nil, err
+	}
+	if inputFile.ModTime().After(inputFile.ModTime()) {
+		return nil, nil
 	}
 
 	outputFile.Meta = entry.Meta

@@ -73,10 +73,6 @@ func (f *File) Size() int64 {
 	return f.size
 }
 
-func (f *File) Hash() (uint32, error) {
-	return 0
-}
-
 func (f *File) ModTime() time.Time {
 	return f.modTime
 }
