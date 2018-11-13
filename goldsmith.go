@@ -1,6 +1,7 @@
 package goldsmith
 
 import (
+	"hash"
 	"os"
 	"path/filepath"
 	"sync"
@@ -11,6 +12,7 @@ type Goldsmith struct {
 	targetDir string
 
 	pluginCtxs []*Context
+	pluginHash hash.Hash32
 
 	fileRefs    map[string]bool
 	fileFilters []Filter
@@ -62,8 +64,10 @@ func (gs *Goldsmith) End(targetDir string) []error {
 	return gs.errors
 }
 
-func (gs *Goldsmith) linkPlugin(plug Plugin) *Context {
-	ctx := &Context{gs: gs, plugin: plug, outputFiles: make(chan *File)}
+func (gs *Goldsmith) linkPlugin(plugin Plugin) *Context {
+	gs.pluginHash.Write([]byte(plugin.Name()))
+
+	ctx := &Context{gs: gs, plugin: plugin, outputFiles: make(chan *File)}
 	ctx.fileFilters = append(ctx.fileFilters, gs.fileFilters...)
 
 	if len(gs.pluginCtxs) > 0 {
