@@ -16,9 +16,10 @@ type cache struct {
 type cacheEntry struct {
 	Meta map[string]interface{}
 
-	Size    int64
-	Hash    int32
-	ModTime int64
+	Size     int64
+	DataHash int32
+	MetaHash int32
+	ModTime  int64
 
 	RelPath  string
 	DepPaths []string
@@ -43,7 +44,7 @@ func (c *cache) readFile(pluginName string, inputFile *File) (*File, error) {
 		return nil, nil
 	}
 
-	_, entryPath := c.buildCachePaths(pluginName, inputFile.Path())
+	dataPath, entryPath := c.buildCachePaths(pluginName, inputFile.Path())
 
 	entry, err := c.readFileEntry(entryPath)
 	if err != nil {
@@ -54,11 +55,15 @@ func (c *cache) readFile(pluginName string, inputFile *File) (*File, error) {
 		return nil, nil
 	}
 
-	if entry.Hash != inputFile.Hash() {
+	if entry.MetaHash != inputFile.MetaHash() {
 		return nil, nil
 	}
 
-	return nil, nil
+	if entry.DataHash != inputFile.DataHash() {
+		return nil, nil
+	}
+
+	return NewFileFromAsset(entry.RelPath, dataPath)
 }
 
 func (c *cache) readFileEntry(path string) (*cacheEntry, error) {
@@ -86,7 +91,7 @@ func (c *cache) writeFile(pluginName string, inputFile, outputFile *File, depPat
 		return err
 	}
 
-	if err := c.writeFileEntry(entryPath, outputFile); err != nil {
+	if err := c.writeFileEntry(entryPath, inputFile, depPaths); err != nil {
 		return err
 	}
 
@@ -107,8 +112,17 @@ func (c *cache) writeFileData(path string, f *File) error {
 	return nil
 }
 
-func (c *cache) writeFileEntry(path string, f *File) error {
-	entry := cacheEntry{Meta: f.Meta}
+func (c *cache) writeFileEntry(path string, file *File, depPaths []string) error {
+	entry := cacheEntry{
+		Meta:     file.Meta,
+		Size:     file.Size(),
+		DataHash: file.DataHash(),
+		MetaHash: file.MetaHash(),
+		ModTime:  file.ModTime().Unix(),
+		RelPath:  file.Path(),
+		DepPaths: depPaths,
+	}
+
 	json, err := json.Marshal(entry)
 	if err != nil {
 		return err

@@ -19,9 +19,10 @@ type File struct {
 
 	reader *bytes.Reader
 
-	size    int64
-	hash    int32
-	modTime time.Time
+	size     int64
+	dataHash int32
+	metaHash int32
+	modTime  time.Time
 }
 
 func NewFileFromData(path string, data []byte, modTime time.Time) *File {
@@ -75,7 +76,11 @@ func (f *File) Size() int64 {
 	return f.size
 }
 
-func (f *File) Hash() int32 {
+func (f *File) DataHash() int32 {
+	return 0
+}
+
+func (f *File) MetaHash() int32 {
 	return 0
 }
 
