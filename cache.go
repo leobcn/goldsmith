@@ -22,7 +22,7 @@ type cacheEntry struct {
 
 func (c *cache) buildCachePaths(context *Context, file *File) (string, string) {
 	fileHashBytes := make([]byte, 4)
-	binary.LittleEndian.PutUint32(fileHashBytes, uint32(file.Hash()))
+	binary.LittleEndian.PutUint32(fileHashBytes, file.Hash())
 
 	hash := crc32.NewIEEE()
 	hash.Write([]byte(context.plugin.Name()))
@@ -48,15 +48,6 @@ func (c *cache) readFile(context *Context, inputFile *File) (*File, error) {
 	entry, err := c.readFileEntry(entryPath)
 	if err != nil {
 		return nil, err
-	}
-
-	stat, err := os.Stat(dataPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if inputFile.ModTime().After(stat.ModTime()) {
-		return nil, nil
 	}
 
 	outputFile, err := NewFileFromAsset(entry.RelPath, dataPath)

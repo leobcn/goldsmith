@@ -3,6 +3,7 @@ package goldsmith
 import (
 	"bytes"
 	"errors"
+	"hash/crc32"
 	"io"
 	"io/ioutil"
 	"os"
@@ -20,17 +21,21 @@ type File struct {
 	reader *bytes.Reader
 
 	size    int64
-	hash    int32
+	hash    uint32
 	modTime time.Time
 }
 
 func NewFileFromData(path string, data []byte, modTime time.Time) *File {
+	hash := crc32.NewIEEE()
+	hash.Write(data)
+
 	return &File{
 		relPath: path,
 		Meta:    make(map[string]interface{}),
 		reader:  bytes.NewReader(data),
-		modTime: modTime,
 		size:    int64(len(data)),
+		hash:    hash.Sum32(),
+		modTime: modTime,
 	}
 }
 
@@ -75,7 +80,7 @@ func (f *File) Size() int64 {
 	return f.size
 }
 
-func (f *File) Hash() int32 {
+func (f *File) Hash() uint32 {
 	return f.hash
 }
 
