@@ -14,13 +14,7 @@ type cache struct {
 }
 
 type cacheEntry struct {
-	Meta map[string]interface{}
-
-	Size     int64
-	DataHash int32
-	MetaHash int32
-	ModTime  int64
-
+	Meta     map[string]interface{}
 	RelPath  string
 	DepPaths []string
 }
@@ -51,19 +45,22 @@ func (c *cache) readFile(pluginName string, inputFile *File) (*File, error) {
 		return nil, err
 	}
 
-	if entry.Size != inputFile.ModTime().Unix() {
+	stat, err := os.Stat(dataPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if inputFile.ModTime().After(stat.ModTime()) {
 		return nil, nil
 	}
 
-	if entry.MetaHash != inputFile.MetaHash() {
-		return nil, nil
+	outputFile, err := NewFileFromAsset(entry.RelPath, dataPath)
+	if err != nil {
+		return nil, err
 	}
 
-	if entry.DataHash != inputFile.DataHash() {
-		return nil, nil
-	}
-
-	return NewFileFromAsset(entry.RelPath, dataPath)
+	outputFile.Meta = entry.Meta
+	return outputFile, nil
 }
 
 func (c *cache) readFileEntry(path string) (*cacheEntry, error) {
@@ -115,10 +112,6 @@ func (c *cache) writeFileData(path string, f *File) error {
 func (c *cache) writeFileEntry(path string, file *File, depPaths []string) error {
 	entry := cacheEntry{
 		Meta:     file.Meta,
-		Size:     file.Size(),
-		DataHash: file.DataHash(),
-		MetaHash: file.MetaHash(),
-		ModTime:  file.ModTime().Unix(),
 		RelPath:  file.Path(),
 		DepPaths: depPaths,
 	}
