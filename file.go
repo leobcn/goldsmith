@@ -17,9 +17,11 @@ type File struct {
 
 	Meta map[string]interface{}
 
-	reader  *bytes.Reader
-	modTime time.Time
+	reader *bytes.Reader
+
 	size    int64
+	hash    int32
+	modTime time.Time
 }
 
 func NewFileFromData(path string, data []byte, modTime time.Time) *File {
@@ -69,12 +71,16 @@ func (f *File) Ext() string {
 	return path.Ext(f.relPath)
 }
 
-func (f *File) ModTime() time.Time {
-	return f.modTime
-}
-
 func (f *File) Size() int64 {
 	return f.size
+}
+
+func (f *File) Hash() int32 {
+	return 0
+}
+
+func (f *File) ModTime() time.Time {
+	return f.modTime
 }
 
 func (f *File) Value(key string) (interface{}, bool) {
@@ -199,20 +205,4 @@ func scanDir(rootDir string, infos chan fileInfo) {
 		infos <- fileInfo{FileInfo: info, path: path}
 		return nil
 	})
-}
-
-func findNewest(paths []string) (time.Time, error) {
-	var modTime time.Time
-	for _, path := range paths {
-		info, err := os.Stat(path)
-		if err != nil {
-			return modTime, err
-		}
-
-		if info.ModTime().After(modTime) {
-			modTime = info.ModTime()
-		}
-	}
-
-	return modTime, nil
 }

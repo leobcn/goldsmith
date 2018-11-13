@@ -1,7 +1,6 @@
 package goldsmith
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
@@ -14,19 +13,29 @@ type cache struct {
 	baseDir string
 }
 
-func (c *cache) buildCachePaths(name, path string) (string, string, string) {
-	h := fnv.New32a()
-	h.Write([]byte(name))
-	h.Write([]byte(path))
-	sum := h.Sum32()
+type cacheEntry struct {
+	Meta map[string]interface{}
+
+	Size    int64
+	Hash    int32
+	ModTime int64
+
+	RelPath  string
+	DepPaths []string
+}
+
+func (c *cache) buildCachePaths(name, path string) (string, string) {
+	hash := fnv.New32a()
+	hash.Write([]byte(name))
+	hash.Write([]byte(path))
+	sum := hash.Sum32()
 
 	ext := filepath.Ext(path)
 
 	dataPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_data%s", sum, ext))
-	metaPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_meta.json", sum))
-	depsPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_deps.txt", sum))
+	entryPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_entry.json", sum))
 
-	return dataPath, metaPath, depsPath
+	return dataPath, entryPath
 }
 
 func (c *cache) readFile(pluginName string, inputFile *File) (*File, error) {
@@ -34,51 +43,36 @@ func (c *cache) readFile(pluginName string, inputFile *File) (*File, error) {
 		return nil, nil
 	}
 
-	dataPath, metaPath, depsPath := c.buildCachePaths(pluginName, inputFile.Path())
+	_, entryPath := c.buildCachePaths(pluginName, inputFile.Path())
 
-	depPaths, _ := c.readFileDeps(depsPath)
-	depPaths = append(depPaths, dataPath, metaPath)
-
-	if modTime, err := findNewest(depPaths); err != nil || inputFile.ModTime().After(modTime) {
+	entry, err := c.readFileEntry(entryPath)
+	if err != nil {
 		return nil, err
 	}
 
-	_, err := c.readFileMeta(metaPath)
-	if err != nil {
-		return nil, err
+	if entry.Size != inputFile.ModTime().Unix() {
+		return nil, nil
+	}
+
+	if entry.Hash != inputFile.Hash() {
+		return nil, nil
 	}
 
 	return nil, nil
 }
 
-func (c *cache) readFileDeps(path string) ([]string, error) {
-	fp, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer fp.Close()
-
-	var depPaths []string
-	scanner := bufio.NewScanner(fp)
-	for scanner.Scan() {
-		depPaths = append(depPaths, scanner.Text())
-	}
-
-	return depPaths, scanner.Err()
-}
-
-func (c *cache) readFileMeta(path string) (map[string]interface{}, error) {
+func (c *cache) readFileEntry(path string) (*cacheEntry, error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	meta := make(map[string]interface{})
-	if err := json.Unmarshal(data, meta); err != nil {
+	var entry cacheEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
 		return nil, err
 	}
 
-	return meta, nil
+	return &entry, nil
 }
 
 func (c *cache) writeFile(pluginName string, inputFile, outputFile *File, depPaths []string) error {
@@ -86,20 +80,14 @@ func (c *cache) writeFile(pluginName string, inputFile, outputFile *File, depPat
 		return nil
 	}
 
-	dataPath, metaPath, depsPath := c.buildCachePaths(pluginName, inputFile.Path())
+	dataPath, entryPath := c.buildCachePaths(pluginName, inputFile.Path())
 
 	if err := c.writeFileData(dataPath, outputFile); err != nil {
 		return err
 	}
 
-	if err := c.writeFileMeta(metaPath, outputFile); err != nil {
+	if err := c.writeFileEntry(entryPath, outputFile); err != nil {
 		return err
-	}
-
-	if len(depPaths) > 0 {
-		if err := c.writeFileDeps(depsPath, depPaths); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -119,27 +107,12 @@ func (c *cache) writeFileData(path string, f *File) error {
 	return nil
 }
 
-func (c *cache) writeFileMeta(path string, f *File) error {
-	json, err := json.Marshal(f.Meta)
+func (c *cache) writeFileEntry(path string, f *File) error {
+	entry := cacheEntry{Meta: f.Meta}
+	json, err := json.Marshal(entry)
 	if err != nil {
 		return err
 	}
 
 	return ioutil.WriteFile(path, json, 0666)
-}
-
-func (c *cache) writeFileDeps(path string, depPaths []string) error {
-	fp, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer fp.Close()
-
-	for _, dep := range depPaths {
-		if _, err := fp.WriteString(fmt.Sprintln(dep)); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
