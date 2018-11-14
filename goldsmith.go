@@ -2,6 +2,7 @@ package goldsmith
 
 import (
 	"hash"
+	"hash/crc32"
 	"os"
 	"path/filepath"
 	"sync"
@@ -23,7 +24,12 @@ type Goldsmith struct {
 }
 
 func Begin(srcDir, cacheDir string) *Goldsmith {
-	gs := &Goldsmith{sourceDir: srcDir, fileCache: &cache{cacheDir}, fileRefs: make(map[string]bool)}
+	gs := &Goldsmith{
+		sourceDir:  srcDir,
+		pluginHash: crc32.NewIEEE(),
+		fileRefs:   make(map[string]bool),
+		fileCache:  &cache{cacheDir},
+	}
 	gs.Chain(new(loader))
 	return gs
 }
