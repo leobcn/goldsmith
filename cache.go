@@ -18,6 +18,7 @@ type cacheRecord struct {
 	Meta     map[string]interface{}
 	RelPath  string
 	DepPaths []string
+	Hash     uint32
 }
 
 func (c *cache) getFile(context *Context, inputFile *File) (*File, error) {
@@ -37,7 +38,10 @@ func (c *cache) getFile(context *Context, inputFile *File) (*File, error) {
 	}
 
 	if inputFile.ModTime().After(outputFile.ModTime()) {
-		return nil, nil
+		hash, err := inputFile.Hash()
+		if err != nil || hash != record.Hash {
+			return nil, err
+		}
 	}
 
 	return outputFile, nil
@@ -86,10 +90,16 @@ func (c *cache) writeFileData(path string, file *File) error {
 }
 
 func (c *cache) writeFileRecord(path string, file *File, depPaths []string) error {
+	hash, err := file.Hash()
+	if err != nil {
+		return err
+	}
+
 	record := cacheRecord{
 		Meta:     file.Meta,
 		RelPath:  file.Path(),
 		DepPaths: depPaths,
+		Hash:     hash,
 	}
 
 	json, err := json.Marshal(record)
