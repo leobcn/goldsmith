@@ -2,7 +2,9 @@ package goldsmith
 
 import (
 	"bytes"
+	"encoding/gob"
 	"errors"
+	"hash/crc32"
 	"io"
 	"io/ioutil"
 	"os"
@@ -155,6 +157,29 @@ func (f *File) export(targetDir string) error {
 	}
 
 	return nil
+}
+
+func (f *File) hashData() (uint32, error) {
+	if err := f.load(); err != nil {
+		return 0, err
+	}
+
+	hash := crc32.NewIEEE()
+	if _, err := io.Copy(hash, f.reader); err != nil {
+		return 0, err
+	}
+
+	return hash.Sum32(), nil
+}
+
+func (f *File) hashMeta() (uint32, error) {
+	hash := crc32.NewIEEE()
+	enc := gob.NewEncoder(hash)
+	if err := enc.Encode(f.Meta); err != nil {
+		return 0, err
+	}
+
+	return hash.Sum32(), nil
 }
 
 func (f *File) load() error {
