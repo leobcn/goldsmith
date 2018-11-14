@@ -30,7 +30,7 @@ func (c *cache) buildCachePaths(context *Context, file *File) (string, string) {
 	hash.Write([]byte(file.Path()))
 
 	stateHash := hash.Sum32()
-	dataPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_data%s", stateHash, filepath.Ext(file.Path())))
+	dataPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_data", stateHash))
 	entryPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_entry.json", stateHash))
 
 	return dataPath, entryPath
@@ -85,21 +85,21 @@ func (c *cache) writeFile(context *Context, inputFile, outputFile *File, depPath
 		return err
 	}
 
-	if err := c.writeFileEntry(entryPath, inputFile, depPaths); err != nil {
+	if err := c.writeFileEntry(entryPath, outputFile, depPaths); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (c *cache) writeFileData(path string, f *File) error {
+func (c *cache) writeFileData(path string, file *File) error {
 	fp, err := os.Create(path)
 	if err != nil {
 		return err
 	}
 	defer fp.Close()
 
-	if _, err := f.WriteTo(fp); err != nil {
+	if _, err := file.WriteTo(fp); err != nil {
 		return err
 	}
 

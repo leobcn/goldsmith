@@ -63,7 +63,7 @@ func (ctx *Context) step() {
 
 					if accept {
 						if outputFile, _ := ctx.gs.fileCache.readFile(ctx, inputFile); outputFile != nil {
-							ctx.DispatchFile(outputFile)
+							ctx.outputFiles <- outputFile
 						} else {
 							if _, err := inputFile.Seek(0, os.SEEK_SET); err != nil {
 								ctx.gs.fault("core", inputFile, err)
