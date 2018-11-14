@@ -52,7 +52,8 @@ func (c *cache) readFile(context *Context, inputFile *File) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	if inputFile.ModTime().After(inputFile.ModTime()) {
+
+	if inputFile.ModTime().After(outputFile.ModTime()) {
 		return nil, nil
 	}
 
