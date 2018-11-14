@@ -20,11 +20,11 @@ func (*loader) Initialize(ctx *Context) ([]Filter, error) {
 		relPath, _ := filepath.Rel(ctx.gs.sourceDir, info.path)
 
 		file := &File{
-			relPath: relPath,
-			Meta:    make(map[string]interface{}),
-			modTime: info.ModTime(),
-			size:    info.Size(),
-			extPath: info.path,
+			sourcePath: relPath,
+			Meta:       make(map[string]interface{}),
+			modTime:    info.ModTime(),
+			size:       info.Size(),
+			dataPath:   info.path,
 		}
 
 		ctx.DispatchFile(file)

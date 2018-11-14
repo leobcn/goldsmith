@@ -12,8 +12,8 @@ import (
 )
 
 type File struct {
-	relPath string
-	extPath string
+	sourcePath string
+	dataPath   string
 
 	Meta map[string]interface{}
 
@@ -22,51 +22,50 @@ type File struct {
 	modTime time.Time
 }
 
-func NewFileFromData(path string, data []byte, modTime time.Time) *File {
+func NewFileFromData(sourcePath string, data []byte, modTime time.Time) *File {
 	return &File{
-		relPath: path,
-		Meta:    make(map[string]interface{}),
-		reader:  bytes.NewReader(data),
-		size:    int64(len(data)),
-		modTime: modTime,
+		sourcePath: sourcePath,
+		Meta:       make(map[string]interface{}),
+		reader:     bytes.NewReader(data),
+		size:       int64(len(data)),
+		modTime:    modTime,
 	}
 }
 
-func NewFileFromAsset(path, asset string) (*File, error) {
-	info, err := os.Stat(asset)
+func NewFileFromAsset(sourcePath, dataPath string) (*File, error) {
+	info, err := os.Stat(dataPath)
 	if err != nil {
 		return nil, err
 	}
-
 	if info.IsDir() {
 		return nil, errors.New("assets must be files")
 	}
 
 	file := &File{
-		relPath: path,
-		extPath: asset,
-		Meta:    make(map[string]interface{}),
-		modTime: info.ModTime(),
-		size:    info.Size(),
+		sourcePath: sourcePath,
+		dataPath:   dataPath,
+		Meta:       make(map[string]interface{}),
+		size:       info.Size(),
+		modTime:    info.ModTime(),
 	}
 
 	return file, nil
 }
 
 func (f *File) Path() string {
-	return f.relPath
+	return f.sourcePath
 }
 
 func (f *File) Name() string {
-	return path.Base(f.relPath)
+	return path.Base(f.sourcePath)
 }
 
 func (f *File) Dir() string {
-	return path.Dir(f.relPath)
+	return path.Dir(f.sourcePath)
 }
 
 func (f *File) Ext() string {
-	return path.Ext(f.relPath)
+	return path.Ext(f.sourcePath)
 }
 
 func (f *File) Size() int64 {
@@ -121,7 +120,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (f *File) export(targetDir string) error {
-	targetPath := filepath.Join(targetDir, f.relPath)
+	targetPath := filepath.Join(targetDir, f.sourcePath)
 	if targetInfo, err := os.Stat(targetPath); err == nil && targetInfo.ModTime().Unix() >= f.ModTime().Unix() {
 		return nil
 	}
@@ -137,7 +136,7 @@ func (f *File) export(targetDir string) error {
 	defer fw.Close()
 
 	if f.reader == nil {
-		fr, err := os.Open(f.extPath)
+		fr, err := os.Open(f.dataPath)
 		if err != nil {
 			return err
 		}
@@ -163,7 +162,7 @@ func (f *File) load() error {
 		return nil
 	}
 
-	data, err := ioutil.ReadFile(f.extPath)
+	data, err := ioutil.ReadFile(f.dataPath)
 	if err != nil {
 		return err
 	}
@@ -193,10 +192,9 @@ func scanDir(rootDir string, infos chan fileInfo) {
 
 	filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return err
+			infos <- fileInfo{FileInfo: info, path: path}
 		}
 
-		infos <- fileInfo{FileInfo: info, path: path}
-		return nil
+		return err
 	})
 }

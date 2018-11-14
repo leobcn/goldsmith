@@ -89,6 +89,21 @@ func (gs *Goldsmith) End(targetDir string) []error {
 	return gs.errors
 }
 
+func (gs *Goldsmith) getCacheFile(context *Context, inputFile *File) *File {
+	if gs.fileCache != nil {
+		file, _ := gs.fileCache.getFile(context, inputFile)
+		return file
+	}
+
+	return nil
+}
+
+func (gs *Goldsmith) setCacheFile(context *Context, inputFile, outputFile *File, depPaths []string) {
+	if gs.fileCache != nil {
+		gs.setCacheFile(context, inputFile, outputFile, depPaths)
+	}
+}
+
 func (gs *Goldsmith) removeUnreferencedFiles() {
 	infos := make(chan fileInfo)
 	go scanDir(gs.targetDir, infos)
@@ -108,7 +123,7 @@ func (gs *Goldsmith) exportFile(file *File) error {
 		return err
 	}
 
-	for pathSeg := cleanPath(file.relPath); pathSeg != "."; pathSeg = filepath.Dir(pathSeg) {
+	for pathSeg := cleanPath(file.sourcePath); pathSeg != "."; pathSeg = filepath.Dir(pathSeg) {
 		gs.fileRefs[pathSeg] = true
 	}
 
@@ -121,7 +136,7 @@ func (gs *Goldsmith) fault(pluginName string, file *File, err error) {
 
 	faultError := &Error{Name: pluginName, Err: err}
 	if file != nil {
-		faultError.Path = file.relPath
+		faultError.Path = file.sourcePath
 	}
 
 	gs.errors = append(gs.errors, faultError)

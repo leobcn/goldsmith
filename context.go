@@ -22,9 +22,7 @@ func (ctx *Context) DispatchFile(f *File) {
 }
 
 func (ctx *Context) CacheFile(inputFile, outputFile *File, depPaths ...string) {
-	if err := ctx.gs.fileCache.setFile(ctx, inputFile, outputFile, depPaths); err != nil {
-		ctx.gs.fault(ctx.plugin.Name(), outputFile, err)
-	}
+	ctx.gs.setCacheFile(ctx, inputFile, outputFile, depPaths)
 }
 
 func (ctx *Context) step() {
@@ -62,7 +60,7 @@ func (ctx *Context) step() {
 					}
 
 					if accept {
-						if outputFile, _ := ctx.gs.fileCache.getFile(ctx, inputFile); outputFile != nil {
+						if outputFile := ctx.gs.getCacheFile(ctx, inputFile); outputFile != nil {
 							ctx.outputFiles <- outputFile
 						} else {
 							if _, err := inputFile.Seek(0, os.SEEK_SET); err != nil {
