@@ -22,8 +22,7 @@ func (ctx *Context) DispatchFile(f *File) {
 }
 
 func (ctx *Context) CacheFile(inputFile, outputFile *File, depPaths ...string) {
-	err := ctx.gs.cacheWriteFile(ctx, inputFile, outputFile, depPaths)
-	if err != nil {
+	if err := ctx.gs.fileCache.writeFile(ctx, inputFile, outputFile, depPaths); err != nil {
 		ctx.gs.fault(ctx.plugin.Name(), outputFile, err)
 	}
 }
@@ -49,11 +48,11 @@ func (ctx *Context) step() {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				for file := range ctx.inputFiles {
+				for inputFile := range ctx.inputFiles {
 					accept := processor != nil
 					for _, filter := range append(ctx.fileFilters, filters...) {
-						if accept, err = filter.Accept(ctx, file); err != nil {
-							ctx.gs.fault(filter.Name(), file, err)
+						if accept, err = filter.Accept(ctx, inputFile); err != nil {
+							ctx.gs.fault(filter.Name(), inputFile, err)
 							return
 						}
 
@@ -63,14 +62,18 @@ func (ctx *Context) step() {
 					}
 
 					if accept {
-						if _, err := file.Seek(0, os.SEEK_SET); err != nil {
-							ctx.gs.fault("core", file, err)
-						}
-						if err := processor.Process(ctx, file); err != nil {
-							ctx.gs.fault(ctx.plugin.Name(), file, err)
+						if outputFile, _ := ctx.gs.fileCache.readFile(ctx, inputFile); outputFile != nil {
+							ctx.DispatchFile(outputFile)
+						} else {
+							if _, err := inputFile.Seek(0, os.SEEK_SET); err != nil {
+								ctx.gs.fault("core", inputFile, err)
+							}
+							if err := processor.Process(ctx, inputFile); err != nil {
+								ctx.gs.fault(ctx.plugin.Name(), inputFile, err)
+							}
 						}
 					} else {
-						ctx.outputFiles <- file
+						ctx.outputFiles <- inputFile
 					}
 				}
 			}()

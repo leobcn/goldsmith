@@ -106,14 +106,6 @@ func (gs *Goldsmith) exportFile(file *File) error {
 	return nil
 }
 
-func (gs *Goldsmith) cacheWriteFile(context *Context, inputFile, outputFile *File, depPaths []string) error {
-	return gs.fileCache.writeFile(context, inputFile, outputFile, depPaths)
-}
-
-func (gs *Goldsmith) cacheReadFile(context *Context, inputFile *File) (*File, error) {
-	return gs.fileCache.readFile(context, inputFile)
-}
-
 func (gs *Goldsmith) fault(pluginName string, file *File, err error) {
 	gs.errorMtx.Lock()
 	defer gs.errorMtx.Unlock()
