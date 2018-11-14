@@ -7,8 +7,10 @@ import (
 )
 
 type Context struct {
-	gs     *Goldsmith
+	gs *Goldsmith
+
 	plugin Plugin
+	hash   uint32
 
 	fileFilters []Filter
 	inputFiles  chan *File

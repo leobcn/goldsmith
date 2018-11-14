@@ -1,6 +1,7 @@
 package goldsmith
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"hash/crc32"
@@ -20,7 +21,11 @@ type cacheEntry struct {
 }
 
 func (c *cache) buildCachePaths(context *Context, file *File) (string, string) {
+	hashBytes := make([]byte, 4)
+	binary.LittleEndian.PutUint32(hashBytes, context.hash)
+
 	hash := crc32.NewIEEE()
+	hash.Write(hashBytes)
 	hash.Write([]byte(context.plugin.Name()))
 	hash.Write([]byte(file.Path()))
 

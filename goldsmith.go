@@ -67,7 +67,7 @@ func (gs *Goldsmith) End(targetDir string) []error {
 func (gs *Goldsmith) linkPlugin(plugin Plugin) *Context {
 	gs.pluginHash.Write([]byte(plugin.Name()))
 
-	ctx := &Context{gs: gs, plugin: plugin, outputFiles: make(chan *File)}
+	ctx := &Context{gs: gs, plugin: plugin, hash: gs.pluginHash.Sum32(), outputFiles: make(chan *File)}
 	ctx.fileFilters = append(ctx.fileFilters, gs.fileFilters...)
 
 	if len(gs.pluginCtxs) > 0 {
