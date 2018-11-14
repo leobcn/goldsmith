@@ -12,8 +12,8 @@ type Goldsmith struct {
 	sourceDir string
 	targetDir string
 
-	pluginCtxs []*Context
-	pluginHash hash.Hash32
+	contexts    []*Context
+	contextHash hash.Hash32
 
 	fileRefs    map[string]bool
 	fileFilters []Filter
@@ -23,19 +23,38 @@ type Goldsmith struct {
 	errorMtx sync.Mutex
 }
 
-func Begin(srcDir, cacheDir string) *Goldsmith {
+func Begin(sourceDir, cacheDir string) *Goldsmith {
 	gs := &Goldsmith{
-		sourceDir:  srcDir,
-		pluginHash: crc32.NewIEEE(),
-		fileRefs:   make(map[string]bool),
-		fileCache:  &cache{cacheDir},
+		sourceDir:   sourceDir,
+		contextHash: crc32.NewIEEE(),
+		fileRefs:    make(map[string]bool),
 	}
+
+	if len(cacheDir) > 0 {
+		gs.fileCache = &cache{cacheDir}
+	}
+
 	gs.Chain(new(loader))
 	return gs
 }
 
 func (gs *Goldsmith) Chain(plugin Plugin) *Goldsmith {
-	gs.linkPlugin(plugin)
+	gs.contextHash.Write([]byte(plugin.Name()))
+
+	context := &Context{
+		gs:          gs,
+		plugin:      plugin,
+		hash:        gs.contextHash.Sum32(),
+		outputFiles: make(chan *File),
+	}
+
+	context.fileFilters = append(context.fileFilters, gs.fileFilters...)
+
+	if len(gs.contexts) > 0 {
+		context.inputFiles = gs.contexts[len(gs.contexts)-1].outputFiles
+	}
+
+	gs.contexts = append(gs.contexts, context)
 	return gs
 }
 
@@ -57,45 +76,29 @@ func (gs *Goldsmith) FilterPop() *Goldsmith {
 func (gs *Goldsmith) End(targetDir string) []error {
 	gs.targetDir = targetDir
 
-	for _, ctx := range gs.pluginCtxs {
+	for _, ctx := range gs.contexts {
 		go ctx.step()
 	}
 
-	ctx := gs.pluginCtxs[len(gs.pluginCtxs)-1]
+	ctx := gs.contexts[len(gs.contexts)-1]
 	for file := range ctx.outputFiles {
 		gs.exportFile(file)
 	}
 
-	gs.cleanupFiles()
+	gs.removeUnreferencedFiles()
 	return gs.errors
 }
 
-func (gs *Goldsmith) linkPlugin(plugin Plugin) *Context {
-	gs.pluginHash.Write([]byte(plugin.Name()))
-
-	ctx := &Context{gs: gs, plugin: plugin, hash: gs.pluginHash.Sum32(), outputFiles: make(chan *File)}
-	ctx.fileFilters = append(ctx.fileFilters, gs.fileFilters...)
-
-	if len(gs.pluginCtxs) > 0 {
-		ctx.inputFiles = gs.pluginCtxs[len(gs.pluginCtxs)-1].outputFiles
-	}
-
-	gs.pluginCtxs = append(gs.pluginCtxs, ctx)
-	return ctx
-}
-
-func (gs *Goldsmith) cleanupFiles() {
+func (gs *Goldsmith) removeUnreferencedFiles() {
 	infos := make(chan fileInfo)
 	go scanDir(gs.targetDir, infos)
 
 	for info := range infos {
-		if info.path == gs.targetDir {
-			continue
-		}
-
-		relPath, _ := filepath.Rel(gs.targetDir, info.path)
-		if contained, _ := gs.fileRefs[relPath]; !contained {
-			os.RemoveAll(info.path)
+		if info.path != gs.targetDir {
+			relPath, _ := filepath.Rel(gs.targetDir, info.path)
+			if contained, _ := gs.fileRefs[relPath]; !contained {
+				os.RemoveAll(info.path)
+			}
 		}
 	}
 }
