@@ -41,10 +41,17 @@ func (c *fileCache) retrieveFile(context *Context, inputFile *File) (*File, erro
 		return nil, nil
 	}
 
+	for _, depPath := range record.DepPaths {
+		info, err := os.Stat(depPath)
+		if err != nil || info.ModTime().After(outputFile.ModTime()) {
+			return nil, err
+		}
+	}
+
 	return outputFile, nil
 }
 
-func (c *fileCache) storeFile(context *Context, inputFile, outputFile *File, depPaths []string) error {
+func (c *fileCache) storeFile(context *Context, outputFile, inputFile *File, depPaths []string) error {
 	dataPath, recordPath := c.buildCachePaths(context, inputFile)
 
 	if err := os.MkdirAll(c.baseDir, 0755); err != nil {

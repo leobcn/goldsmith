@@ -91,16 +91,16 @@ func (gs *Goldsmith) End(targetDir string) []error {
 
 func (gs *Goldsmith) storeFile(context *Context, inputFile *File) *File {
 	if gs.fileCache != nil {
-		file, _ := gs.fileCache.retrieveFile(context, inputFile)
-		return file
+		outputFile, _ := gs.fileCache.retrieveFile(context, inputFile)
+		return outputFile
 	}
 
 	return nil
 }
 
-func (gs *Goldsmith) retrieveFile(context *Context, inputFile, outputFile *File, depPaths []string) {
+func (gs *Goldsmith) retrieveFile(context *Context, outputFile, inputFile *File, depPaths []string) {
 	if gs.fileCache != nil {
-		gs.fileCache.storeFile(context, inputFile, outputFile, depPaths)
+		gs.fileCache.storeFile(context, outputFile, inputFile, depPaths)
 	}
 }
 

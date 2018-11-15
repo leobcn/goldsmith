@@ -21,8 +21,8 @@ func (ctx *Context) DispatchFile(file *File) {
 	ctx.outputFiles <- file
 }
 
-func (ctx *Context) DispatchFileAndCache(inputFile, outputFile *File, depPaths ...string) {
-	ctx.gs.retrieveFile(ctx, inputFile, outputFile, depPaths)
+func (ctx *Context) DispatchFileAndCache(outputFile, inputFile *File, depPaths ...string) {
+	ctx.gs.retrieveFile(ctx, outputFile, inputFile, depPaths)
 	ctx.DispatchFile(outputFile)
 }
 
