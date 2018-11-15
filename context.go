@@ -17,12 +17,13 @@ type Context struct {
 	outputFiles chan *File
 }
 
-func (ctx *Context) DispatchFile(f *File) {
-	ctx.outputFiles <- f
+func (ctx *Context) DispatchFile(file *File) {
+	ctx.outputFiles <- file
 }
 
-func (ctx *Context) CacheFile(inputFile, outputFile *File, depPaths ...string) {
+func (ctx *Context) DispatchFileAndCache(inputFile, outputFile *File, depPaths ...string) {
 	ctx.gs.retrieveFile(ctx, inputFile, outputFile, depPaths)
+	ctx.DispatchFile(outputFile)
 }
 
 func (ctx *Context) step() {
