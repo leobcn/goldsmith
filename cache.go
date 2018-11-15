@@ -18,7 +18,6 @@ type cacheRecord struct {
 	Meta     map[string]interface{}
 	RelPath  string
 	DepPaths []string
-	Hash     uint32
 }
 
 func (c *cache) getFile(context *Context, inputFile *File) (*File, error) {
@@ -33,15 +32,13 @@ func (c *cache) getFile(context *Context, inputFile *File) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if record.Meta != nil {
 		outputFile.Meta = record.Meta
 	}
 
 	if inputFile.ModTime().After(outputFile.ModTime()) {
-		hash, err := inputFile.Hash()
-		if err != nil || hash != record.Hash {
-			return nil, err
-		}
+		return nil, nil
 	}
 
 	return outputFile, nil
@@ -89,17 +86,11 @@ func (c *cache) writeFileData(path string, file *File) error {
 	return nil
 }
 
-func (c *cache) writeFileRecord(path string, file *File, depPaths []string) error {
-	hash, err := file.Hash()
-	if err != nil {
-		return err
-	}
-
+func (c *cache) writeFileRecord(path string, outputFile *File, depPaths []string) error {
 	record := cacheRecord{
-		Meta:     file.Meta,
-		RelPath:  file.Path(),
+		Meta:     outputFile.Meta,
+		RelPath:  outputFile.Path(),
 		DepPaths: depPaths,
-		Hash:     hash,
 	}
 
 	json, err := json.Marshal(record)
@@ -120,8 +111,8 @@ func (c *cache) buildCachePaths(context *Context, file *File) (string, string) {
 	hash.Write([]byte(file.Path()))
 
 	stateHash := hash.Sum32()
-	dataPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_data", stateHash))
-	recordPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_record.json", stateHash))
+	dataPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_dat", stateHash))
+	recordPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_rec", stateHash))
 
 	return dataPath, recordPath
 }

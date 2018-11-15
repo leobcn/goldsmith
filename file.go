@@ -2,9 +2,7 @@ package goldsmith
 
 import (
 	"bytes"
-	"encoding/gob"
 	"errors"
-	"hash/crc32"
 	"io"
 	"io/ioutil"
 	"os"
@@ -122,31 +120,6 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	return f.reader.Seek(offset, whence)
-}
-
-func (f *File) Hash() (uint32, error) {
-	if f.hashValid {
-		return f.hash, nil
-	}
-
-	if err := f.load(); err != nil {
-		return 0, err
-	}
-
-	hash := crc32.NewIEEE()
-	if _, err := io.Copy(hash, f.reader); err != nil {
-		return 0, err
-	}
-
-	enc := gob.NewEncoder(hash)
-	if err := enc.Encode(f.Meta); err != nil {
-		return 0, err
-	}
-
-	f.hash = hash.Sum32()
-	f.hashValid = true
-
-	return f.hash, nil
 }
 
 func (f *File) export(targetDir string) error {
