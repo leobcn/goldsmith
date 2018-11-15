@@ -47,6 +47,10 @@ func (c *fileCache) retrieveFile(context *Context, inputFile *File) (*File, erro
 func (c *fileCache) storeFile(context *Context, inputFile, outputFile *File, depPaths []string) error {
 	dataPath, recordPath := c.buildCachePaths(context, inputFile)
 
+	if err := os.MkdirAll(c.baseDir, 0755); err != nil {
+		return err
+	}
+
 	if err := c.writeFileData(dataPath, outputFile); err != nil {
 		return err
 	}
