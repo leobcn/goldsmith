@@ -10,17 +10,17 @@ import (
 	"path/filepath"
 )
 
-type cache struct {
+type fileCache struct {
 	baseDir string
 }
 
-type cacheRecord struct {
+type fileRecord struct {
 	Meta     map[string]interface{}
 	RelPath  string
 	DepPaths []string
 }
 
-func (c *cache) getFile(context *Context, inputFile *File) (*File, error) {
+func (c *fileCache) retrieveFile(context *Context, inputFile *File) (*File, error) {
 	dataPath, recordPath := c.buildCachePaths(context, inputFile)
 
 	record, err := c.readFileRecord(recordPath)
@@ -44,7 +44,7 @@ func (c *cache) getFile(context *Context, inputFile *File) (*File, error) {
 	return outputFile, nil
 }
 
-func (c *cache) setFile(context *Context, inputFile, outputFile *File, depPaths []string) error {
+func (c *fileCache) storeFile(context *Context, inputFile, outputFile *File, depPaths []string) error {
 	dataPath, recordPath := c.buildCachePaths(context, inputFile)
 
 	if err := c.writeFileData(dataPath, outputFile); err != nil {
@@ -58,13 +58,13 @@ func (c *cache) setFile(context *Context, inputFile, outputFile *File, depPaths 
 	return nil
 }
 
-func (c *cache) readFileRecord(path string) (*cacheRecord, error) {
+func (c *fileCache) readFileRecord(path string) (*fileRecord, error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	var record cacheRecord
+	var record fileRecord
 	if err := json.Unmarshal(data, &record); err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func (c *cache) readFileRecord(path string) (*cacheRecord, error) {
 	return &record, nil
 }
 
-func (c *cache) writeFileData(path string, file *File) error {
+func (c *fileCache) writeFileData(path string, file *File) error {
 	fp, err := os.Create(path)
 	if err != nil {
 		return err
@@ -86,10 +86,10 @@ func (c *cache) writeFileData(path string, file *File) error {
 	return nil
 }
 
-func (c *cache) writeFileRecord(path string, outputFile *File, depPaths []string) error {
-	record := cacheRecord{
-		Meta:     outputFile.Meta,
-		RelPath:  outputFile.Path(),
+func (c *fileCache) writeFileRecord(path string, file *File, depPaths []string) error {
+	record := fileRecord{
+		Meta:     file.Meta,
+		RelPath:  file.Path(),
 		DepPaths: depPaths,
 	}
 
@@ -101,18 +101,17 @@ func (c *cache) writeFileRecord(path string, outputFile *File, depPaths []string
 	return ioutil.WriteFile(path, json, 0666)
 }
 
-func (c *cache) buildCachePaths(context *Context, file *File) (string, string) {
+func (c *fileCache) buildCachePaths(context *Context, file *File) (string, string) {
 	hashBytes := make([]byte, 4)
 	binary.LittleEndian.PutUint32(hashBytes, context.hash)
 
 	hash := crc32.NewIEEE()
 	hash.Write(hashBytes)
-	hash.Write([]byte(context.plugin.Name()))
 	hash.Write([]byte(file.Path()))
+	hashSum := hash.Sum32()
 
-	stateHash := hash.Sum32()
-	dataPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_dat", stateHash))
-	recordPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_rec", stateHash))
+	dataPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_dat", hashSum))
+	recordPath := filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x_rec", hashSum))
 
 	return dataPath, recordPath
 }

@@ -17,7 +17,7 @@ type Goldsmith struct {
 
 	fileRefs    map[string]bool
 	fileFilters []Filter
-	fileCache   *cache
+	fileCache   *fileCache
 
 	errors   []error
 	errorMtx sync.Mutex
@@ -31,7 +31,7 @@ func Begin(sourceDir, cacheDir string) *Goldsmith {
 	}
 
 	if len(cacheDir) > 0 {
-		gs.fileCache = &cache{cacheDir}
+		gs.fileCache = &fileCache{cacheDir}
 	}
 
 	gs.Chain(new(loader))
@@ -89,18 +89,18 @@ func (gs *Goldsmith) End(targetDir string) []error {
 	return gs.errors
 }
 
-func (gs *Goldsmith) getCacheFile(context *Context, inputFile *File) *File {
+func (gs *Goldsmith) storeFile(context *Context, inputFile *File) *File {
 	if gs.fileCache != nil {
-		file, _ := gs.fileCache.getFile(context, inputFile)
+		file, _ := gs.fileCache.retrieveFile(context, inputFile)
 		return file
 	}
 
 	return nil
 }
 
-func (gs *Goldsmith) setCacheFile(context *Context, inputFile, outputFile *File, depPaths []string) {
+func (gs *Goldsmith) retrieveFile(context *Context, inputFile, outputFile *File, depPaths []string) {
 	if gs.fileCache != nil {
-		gs.fileCache.setFile(context, inputFile, outputFile, depPaths)
+		gs.fileCache.storeFile(context, inputFile, outputFile, depPaths)
 	}
 }
 
