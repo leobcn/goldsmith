@@ -76,12 +76,12 @@ func (gs *Goldsmith) FilterPop() *Goldsmith {
 func (gs *Goldsmith) End(targetDir string) []error {
 	gs.targetDir = targetDir
 
-	for _, ctx := range gs.contexts {
-		go ctx.step()
+	for _, context := range gs.contexts {
+		go context.step()
 	}
 
-	ctx := gs.contexts[len(gs.contexts)-1]
-	for file := range ctx.outputFiles {
+	context := gs.contexts[len(gs.contexts)-1]
+	for file := range context.outputFiles {
 		gs.exportFile(file)
 	}
 
