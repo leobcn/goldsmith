@@ -23,18 +23,19 @@ type Goldsmith struct {
 	errorMtx sync.Mutex
 }
 
-func Begin(sourceDir, cacheDir string) *Goldsmith {
+func Begin(sourceDir string) *Goldsmith {
 	gs := &Goldsmith{
 		sourceDir:   sourceDir,
 		contextHash: crc32.NewIEEE(),
 		fileRefs:    make(map[string]bool),
 	}
 
-	if len(cacheDir) > 0 {
-		gs.fileCache = &fileCache{cacheDir}
-	}
-
 	gs.Chain(new(loader))
+	return gs
+}
+
+func (gs *Goldsmith) Cache(cacheDir string) *Goldsmith {
+	gs.fileCache = &fileCache{cacheDir}
 	return gs
 }
 
