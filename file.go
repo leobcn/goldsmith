@@ -221,7 +221,7 @@ func scanDir(rootDir string, infos chan fileInfo) {
 	defer close(infos)
 
 	filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
+		if err == nil {
 			infos <- fileInfo{FileInfo: info, path: path}
 		}
 

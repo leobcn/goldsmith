@@ -100,7 +100,7 @@ func (gs *Goldsmith) getCacheFile(context *Context, inputFile *File) *File {
 
 func (gs *Goldsmith) setCacheFile(context *Context, inputFile, outputFile *File, depPaths []string) {
 	if gs.fileCache != nil {
-		gs.setCacheFile(context, inputFile, outputFile, depPaths)
+		gs.fileCache.setFile(context, inputFile, outputFile, depPaths)
 	}
 }
 
