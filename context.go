@@ -26,6 +26,10 @@ func (ctx *Context) DispatchFileAndCache(outputFile, inputFile *File, depPaths .
 	ctx.DispatchFile(outputFile)
 }
 
+func (ctx *Context) RetrieveCachedFile(inputFile *File) *File {
+	return ctx.gs.retrieveFile(ctx, inputFile)
+}
+
 func (ctx *Context) step() {
 	defer close(ctx.outputFiles)
 
@@ -61,15 +65,11 @@ func (ctx *Context) step() {
 					}
 
 					if accept {
-						if outputFile := ctx.gs.retrieveFile(ctx, inputFile); outputFile != nil {
-							ctx.outputFiles <- outputFile
-						} else {
-							if _, err := inputFile.Seek(0, os.SEEK_SET); err != nil {
-								ctx.gs.fault("core", inputFile, err)
-							}
-							if err := processor.Process(ctx, inputFile); err != nil {
-								ctx.gs.fault(ctx.plugin.Name(), inputFile, err)
-							}
+						if _, err := inputFile.Seek(0, os.SEEK_SET); err != nil {
+							ctx.gs.fault("core", inputFile, err)
+						}
+						if err := processor.Process(ctx, inputFile); err != nil {
+							ctx.gs.fault(ctx.plugin.Name(), inputFile, err)
 						}
 					} else {
 						ctx.outputFiles <- inputFile

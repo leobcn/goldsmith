@@ -25,13 +25,13 @@ type File struct {
 	modTime time.Time
 }
 
-func NewFileFromData(sourcePath string, data []byte, modTime time.Time) *File {
+func NewFileFromData(sourcePath string, data []byte) *File {
 	return &File{
 		sourcePath: sourcePath,
 		Meta:       make(map[string]interface{}),
 		reader:     bytes.NewReader(data),
 		size:       int64(len(data)),
-		modTime:    modTime,
+		modTime:    time.Now(),
 	}
 }
 
