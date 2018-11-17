@@ -90,6 +90,10 @@ func (c *fileCache) writeFileData(path string, file *File) error {
 	}
 	defer fp.Close()
 
+	if _, err := file.Seek(0, os.SEEK_SET); err != nil {
+		return err
+	}
+
 	if _, err := file.WriteTo(fp); err != nil {
 		return err
 	}
