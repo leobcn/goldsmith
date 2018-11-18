@@ -85,6 +85,7 @@ func (f *File) Value(key string) (interface{}, bool) {
 }
 
 func (f *File) SetValue(key string, value interface{}) {
+	f.modTime = time.Now()
 	f.Meta[key] = value
 }
 
