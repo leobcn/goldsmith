@@ -14,7 +14,7 @@ type fileCache struct {
 	baseDir string
 }
 
-func (c *fileCache) retrieveFile(context *Context, outputPath string, inputPaths ...string) (*File, error) {
+func (c *fileCache) retrieveFile(context *Context, outputPath string, inputFile *File, depPaths ...string) (*File, error) {
 	dataPath, metaPath := c.buildCachePaths(context, outputPath)
 
 	outputFile, err := NewFileFromAsset(outputPath, dataPath)
@@ -31,9 +31,12 @@ func (c *fileCache) retrieveFile(context *Context, outputPath string, inputPaths
 		outputFile.Meta = meta
 	}
 
-	for _, depPath := range inputPaths {
-		depPathAbs := filepath.Join(context.gs.sourceDir, depPath)
-		if stat, err := os.Stat(depPathAbs); err != nil || stat.ModTime().After(outputFile.ModTime()) {
+	if inputFile.ModTime().After(outputFile.ModTime()) {
+		return nil, nil
+	}
+
+	for _, depPath := range depPaths {
+		if stat, err := os.Stat(depPath); err != nil || stat.ModTime().After(outputFile.ModTime()) {
 			return nil, err
 		}
 	}
@@ -41,7 +44,7 @@ func (c *fileCache) retrieveFile(context *Context, outputPath string, inputPaths
 	return outputFile, nil
 }
 
-func (c *fileCache) storeFile(context *Context, outputFile *File, inputPaths ...string) error {
+func (c *fileCache) storeFile(context *Context, outputFile *File) error {
 	dataPath, metaPath := c.buildCachePaths(context, outputFile.Path())
 
 	if err := os.MkdirAll(c.baseDir, 0755); err != nil {

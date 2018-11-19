@@ -25,8 +25,8 @@ func (ctx *Context) DispatchFile(file *File, cache bool) {
 	ctx.outputFiles <- file
 }
 
-func (ctx *Context) RetrieveCachedFile(outputPath string, inputPaths ...string) *File {
-	return ctx.gs.retrieveFile(ctx, outputPath, inputPaths...)
+func (ctx *Context) RetrieveCachedFile(outputPath string, inputFile *File, inputPaths ...string) *File {
+	return ctx.gs.retrieveFile(ctx, outputPath, inputFile, inputPaths...)
 }
 
 func (ctx *Context) step() {
