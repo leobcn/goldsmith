@@ -27,7 +27,7 @@ func (*loader) Initialize(ctx *Context) ([]Filter, error) {
 			dataPath:   info.path,
 		}
 
-		ctx.DispatchFile(file)
+		ctx.DispatchFile(file, false)
 	}
 
 	return nil, nil
