@@ -32,7 +32,8 @@ func (c *fileCache) retrieveFile(context *Context, outputPath string, inputPaths
 	}
 
 	for _, depPath := range inputPaths {
-		if stat, err := os.Stat(depPath); err != nil || stat.ModTime().After(outputFile.ModTime()) {
+		depPathAbs := filepath.Join(context.gs.sourceDir, depPath)
+		if stat, err := os.Stat(depPathAbs); err != nil || stat.ModTime().After(outputFile.ModTime()) {
 			return nil, err
 		}
 	}
