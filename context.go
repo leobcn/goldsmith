@@ -7,7 +7,7 @@ import (
 )
 
 type Context struct {
-	gs *Goldsmith
+	goldsmith *Goldsmith
 
 	plugin Plugin
 	hash   uint32
@@ -17,16 +17,17 @@ type Context struct {
 	outputFiles chan *File
 }
 
-func (ctx *Context) DispatchFile(file *File, cache bool) {
-	if cache {
-		ctx.gs.storeFile(ctx, file)
-	}
-
+func (ctx *Context) DispatchFile(file *File) {
 	ctx.outputFiles <- file
 }
 
-func (ctx *Context) RetrieveCachedFile(outputPath string, inputFile *File, inputPaths ...string) *File {
-	return ctx.gs.retrieveFile(ctx, outputPath, inputFile, inputPaths...)
+func (ctx *Context) DispatchAndCacheFile(file *File) {
+	ctx.goldsmith.storeFile(ctx, file)
+	ctx.DispatchFile(file)
+}
+
+func (ctx *Context) RetrieveCachedFile(outputPath string, inputFile *File, depPaths ...string) *File {
+	return ctx.goldsmith.retrieveFile(ctx, outputPath, inputFile, depPaths...)
 }
 
 func (ctx *Context) step() {
@@ -37,7 +38,7 @@ func (ctx *Context) step() {
 	if initializer, ok := ctx.plugin.(Initializer); ok {
 		filters, err = initializer.Initialize(ctx)
 		if err != nil {
-			ctx.gs.fault(ctx.plugin.Name(), nil, err)
+			ctx.goldsmith.fault(ctx.plugin.Name(), nil, err)
 			return
 		}
 	}
@@ -54,7 +55,7 @@ func (ctx *Context) step() {
 					accept := processor != nil
 					for _, filter := range append(ctx.fileFilters, filters...) {
 						if accept, err = filter.Accept(ctx, inputFile); err != nil {
-							ctx.gs.fault(filter.Name(), inputFile, err)
+							ctx.goldsmith.fault(filter.Name(), inputFile, err)
 							return
 						}
 
@@ -65,10 +66,10 @@ func (ctx *Context) step() {
 
 					if accept {
 						if _, err := inputFile.Seek(0, os.SEEK_SET); err != nil {
-							ctx.gs.fault("core", inputFile, err)
+							ctx.goldsmith.fault("core", inputFile, err)
 						}
 						if err := processor.Process(ctx, inputFile); err != nil {
-							ctx.gs.fault(ctx.plugin.Name(), inputFile, err)
+							ctx.goldsmith.fault(ctx.plugin.Name(), inputFile, err)
 						}
 					} else {
 						ctx.outputFiles <- inputFile
@@ -81,7 +82,7 @@ func (ctx *Context) step() {
 
 	if finalizer, ok := ctx.plugin.(Finalizer); ok {
 		if err := finalizer.Finalize(ctx); err != nil {
-			ctx.gs.fault(ctx.plugin.Name(), nil, err)
+			ctx.goldsmith.fault(ctx.plugin.Name(), nil, err)
 		}
 	}
 }

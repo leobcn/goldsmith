@@ -43,7 +43,7 @@ func (gs *Goldsmith) Chain(plugin Plugin) *Goldsmith {
 	gs.contextHash.Write([]byte(plugin.Name()))
 
 	context := &Context{
-		gs:          gs,
+		goldsmith:   gs,
 		plugin:      plugin,
 		hash:        gs.contextHash.Sum32(),
 		outputFiles: make(chan *File),

@@ -10,14 +10,14 @@ func (*loader) Name() string {
 
 func (*loader) Initialize(ctx *Context) ([]Filter, error) {
 	infos := make(chan fileInfo)
-	go scanDir(ctx.gs.sourceDir, infos)
+	go scanDir(ctx.goldsmith.sourceDir, infos)
 
 	for info := range infos {
 		if info.IsDir() {
 			continue
 		}
 
-		relPath, _ := filepath.Rel(ctx.gs.sourceDir, info.path)
+		relPath, _ := filepath.Rel(ctx.goldsmith.sourceDir, info.path)
 
 		file := &File{
 			sourcePath: relPath,
@@ -27,7 +27,7 @@ func (*loader) Initialize(ctx *Context) ([]Filter, error) {
 			dataPath:   info.path,
 		}
 
-		ctx.DispatchFile(file, false)
+		ctx.DispatchFile(file)
 	}
 
 	return nil, nil
