@@ -58,7 +58,6 @@ func (ctx *Context) step() {
 							ctx.goldsmith.fault(filter.Name(), inputFile, err)
 							return
 						}
-
 						if !accept {
 							break
 						}

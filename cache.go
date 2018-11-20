@@ -31,7 +31,7 @@ func (c *fileCache) retrieveFile(context *Context, outputPath string, inputFile 
 		outputFile.Meta = meta
 	}
 
-	if inputFile.ModTime().After(outputFile.ModTime()) {
+	if inputFile != nil && inputFile.ModTime().After(outputFile.ModTime()) {
 		return nil, nil
 	}
 
