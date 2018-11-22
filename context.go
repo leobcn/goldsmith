@@ -26,8 +26,8 @@ func (ctx *Context) DispatchAndCacheFile(file *File) {
 	ctx.DispatchFile(file)
 }
 
-func (ctx *Context) RetrieveCachedFile(outputPath string, inputFile *File, depPaths ...string) *File {
-	return ctx.goldsmith.retrieveFile(ctx, outputPath, inputFile, depPaths...)
+func (ctx *Context) RetrieveCachedFile(outputPath string, inputFile *File) *File {
+	return ctx.goldsmith.retrieveFile(ctx, outputPath, inputFile)
 }
 
 func (ctx *Context) step() {
