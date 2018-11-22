@@ -27,8 +27,13 @@ func (ctx *Context) DispatchFile(file *File) {
 }
 
 func (ctx *Context) DispatchAndCacheFile(file *File) {
-	ctx.goldsmith.storeFile(ctx, file)
-	ctx.DispatchFile(file)
+	if cachedFile := ctx.RetrieveCachedFile(file.Path(), nil); cachedFile != nil && cachedFile.equals(file) {
+		cachedFile.InheritValues(file)
+		ctx.outputFiles <- cachedFile
+	} else {
+		ctx.goldsmith.storeFile(ctx, file)
+		ctx.outputFiles <- file
+	}
 }
 
 func (ctx *Context) RetrieveCachedFile(outputPath string, inputFile *File) *File {
