@@ -174,6 +174,40 @@ func (f *File) load() error {
 	return nil
 }
 
+func (f *File) equals(file *File) bool {
+	if f.Size() != file.Size() {
+		return false
+	}
+
+	if err := f.load(); err != nil {
+		return false
+	}
+
+	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
+		return false
+	}
+
+	if err := file.load(); err != nil {
+		return false
+	}
+
+	if _, err := file.Seek(0, os.SEEK_SET); err != nil {
+		return false
+	}
+
+	data1, err := ioutil.ReadAll(f.reader)
+	if err != nil {
+		return false
+	}
+
+	data2, err := ioutil.ReadAll(file.reader)
+	if err != nil {
+		return false
+	}
+
+	return bytes.Compare(data1, data2) == 0
+}
+
 type fileInfo struct {
 	os.FileInfo
 	path string
