@@ -3,6 +3,7 @@ package goldsmith
 import (
 	"bytes"
 	"errors"
+	"hash/crc32"
 	"io"
 	"io/ioutil"
 	"os"
@@ -17,7 +18,7 @@ type File struct {
 
 	Meta map[string]interface{}
 
-	hash      uint32
+	hashValue uint32
 	hashValid bool
 
 	reader  *bytes.Reader
@@ -174,38 +175,43 @@ func (f *File) load() error {
 	return nil
 }
 
+func (f *File) hash() error {
+	if f.hashValid {
+		return nil
+	}
+
+	if err := f.load(); err != nil {
+		return err
+	}
+
+	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
+		return err
+	}
+
+	hasher := crc32.NewIEEE()
+	if _, err := io.Copy(hasher, f.reader); err != nil {
+		return err
+	}
+
+	f.hashValue = hasher.Sum32()
+	f.hashValid = true
+	return nil
+}
+
 func (f *File) equals(file *File) bool {
 	if f.Size() != file.Size() {
 		return false
 	}
 
-	if err := f.load(); err != nil {
+	if err := f.hash(); err != nil {
 		return false
 	}
 
-	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
+	if err := file.hash(); err != nil {
 		return false
 	}
 
-	if err := file.load(); err != nil {
-		return false
-	}
-
-	if _, err := file.Seek(0, os.SEEK_SET); err != nil {
-		return false
-	}
-
-	data1, err := ioutil.ReadAll(f.reader)
-	if err != nil {
-		return false
-	}
-
-	data2, err := ioutil.ReadAll(file.reader)
-	if err != nil {
-		return false
-	}
-
-	return bytes.Compare(data1, data2) == 0
+	return f.hashValue == file.hashValue
 }
 
 type fileInfo struct {
