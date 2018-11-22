@@ -18,22 +18,12 @@ type Context struct {
 }
 
 func (ctx *Context) DispatchFile(file *File) {
-	if cachedFile := ctx.RetrieveCachedFile(file.Path(), nil); cachedFile != nil && cachedFile.equals(file) {
-		cachedFile.InheritValues(file)
-		ctx.outputFiles <- cachedFile
-	} else {
-		ctx.outputFiles <- file
-	}
+	ctx.outputFiles <- file
 }
 
 func (ctx *Context) DispatchAndCacheFile(file *File) {
-	if cachedFile := ctx.RetrieveCachedFile(file.Path(), nil); cachedFile != nil && cachedFile.equals(file) {
-		cachedFile.InheritValues(file)
-		ctx.outputFiles <- cachedFile
-	} else {
-		ctx.goldsmith.storeFile(ctx, file)
-		ctx.outputFiles <- file
-	}
+	ctx.goldsmith.storeFile(ctx, file)
+	ctx.outputFiles <- file
 }
 
 func (ctx *Context) RetrieveCachedFile(outputPath string, inputFile *File) *File {
