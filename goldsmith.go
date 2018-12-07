@@ -90,18 +90,18 @@ func (gs *Goldsmith) End(targetDir string) []error {
 	return gs.errors
 }
 
-func (gs *Goldsmith) retrieveFile(context *Context, outputPath string, inputFile *File) *File {
+func (gs *Goldsmith) retrieveFile(context *Context, outputPath string, inputFiles []*File) *File {
 	if gs.fileCache != nil {
-		outputFile, _ := gs.fileCache.retrieveFile(context, outputPath, inputFile)
+		outputFile, _ := gs.fileCache.retrieveFile(context, outputPath, inputFiles)
 		return outputFile
 	}
 
 	return nil
 }
 
-func (gs *Goldsmith) storeFile(context *Context, outputFile *File) {
+func (gs *Goldsmith) storeFile(context *Context, outputFile *File, inputFiles []*File) {
 	if gs.fileCache != nil {
-		gs.fileCache.storeFile(context, outputFile)
+		gs.fileCache.storeFile(context, outputFile, inputFiles)
 	}
 }
 

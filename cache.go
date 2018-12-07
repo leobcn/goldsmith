@@ -2,10 +2,8 @@ package goldsmith
 
 import (
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"hash/crc32"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -14,40 +12,25 @@ type fileCache struct {
 	baseDir string
 }
 
-type fileMeta struct {
-	Hash uint32
-}
-
-func (c *fileCache) retrieveFile(context *Context, outputPath string, inputFile *File) (*File, error) {
-	cachePath, metaPath := c.buildCachePaths(context, outputPath)
+func (c *fileCache) retrieveFile(context *Context, outputPath string, inputFiles []*File) (*File, error) {
+	cachePath, err := c.buildCachePath(context, outputPath, inputFiles)
+	if err != nil {
+		return nil, err
+	}
 
 	outputFile, err := NewFileFromAsset(outputPath, cachePath)
 	if err != nil {
 		return nil, err
 	}
 
-	if inputFile != nil && inputFile.ModTime().After(outputFile.ModTime()) {
-		return nil, nil
-	}
-
-	metaData, err := ioutil.ReadFile(metaPath)
-	if err != nil {
-		return nil, err
-	}
-
-	var meta fileMeta
-	if err := json.Unmarshal(metaData, &meta); err != nil {
-		return nil, err
-	}
-
-	outputFile.hashValue = meta.Hash
-	outputFile.hashValid = true
-
 	return outputFile, nil
 }
 
-func (c *fileCache) storeFile(context *Context, outputFile *File) error {
-	cachePath, metaPath := c.buildCachePaths(context, outputFile.Path())
+func (c *fileCache) storeFile(context *Context, outputFile *File, inputFiles []*File) error {
+	cachePath, err := c.buildCachePath(context, outputFile.Path(), inputFiles)
+	if err != nil {
+		return err
+	}
 
 	if err := os.MkdirAll(c.baseDir, 0755); err != nil {
 		return err
@@ -59,6 +42,11 @@ func (c *fileCache) storeFile(context *Context, outputFile *File) error {
 	}
 	defer fp.Close()
 
+	offset, err := outputFile.Seek(0, os.SEEK_CUR)
+	if err != nil {
+		return err
+	}
+
 	if _, err := outputFile.Seek(0, os.SEEK_SET); err != nil {
 		return err
 	}
@@ -67,35 +55,37 @@ func (c *fileCache) storeFile(context *Context, outputFile *File) error {
 		return err
 	}
 
-	if err := outputFile.hash(); err != nil {
-		return err
-	}
-
-	metaData, err := json.Marshal(&fileMeta{outputFile.hashValue})
-	if err != nil {
-		return err
-	}
-
-	if err := ioutil.WriteFile(metaPath, metaData, 0644); err != nil {
+	if _, err := outputFile.Seek(offset, os.SEEK_SET); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (c *fileCache) buildCachePaths(context *Context, path string) (string, string) {
-	hashBytes := make([]byte, 4)
-	binary.LittleEndian.PutUint32(hashBytes, context.hash)
+func (c *fileCache) buildCachePath(context *Context, outputPath string, inputFiles []*File) (string, error) {
+	uintBuff := make([]byte, 4)
 
 	hash := crc32.NewIEEE()
-	hash.Write(hashBytes)
-	hash.Write([]byte(path))
+	binary.LittleEndian.PutUint32(uintBuff, context.hash)
+	hash.Write(uintBuff)
+	hash.Write([]byte(outputPath))
 
-	var (
-		basePath  = filepath.Join(c.baseDir, fmt.Sprintf("gs_%.8x", hash.Sum32()))
-		cachePath = fmt.Sprintf("%s_data%s", basePath, filepath.Ext(path))
-		metaPath  = fmt.Sprintf("%s_meta.json", basePath)
-	)
+	for _, inputFile := range inputFiles {
+		fileHash, err := inputFile.hash()
+		if err == nil {
+			binary.LittleEndian.PutUint32(uintBuff, fileHash)
+			hash.Write(uintBuff)
+			hash.Write([]byte(inputFile.Path()))
+		} else {
+			return "", err
+		}
+	}
 
-	return cachePath, metaPath
+	cachePath := filepath.Join(c.baseDir, fmt.Sprintf(
+		"gs_%.8x%s",
+		hash.Sum32(),
+		filepath.Ext(outputPath),
+	))
+
+	return cachePath, nil
 }

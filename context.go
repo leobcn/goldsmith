@@ -21,13 +21,13 @@ func (ctx *Context) DispatchFile(file *File) {
 	ctx.outputFiles <- file
 }
 
-func (ctx *Context) DispatchAndCacheFile(file *File) {
-	ctx.goldsmith.storeFile(ctx, file)
-	ctx.outputFiles <- file
+func (ctx *Context) DispatchAndCacheFile(outputFile *File, inputFiles ...*File) {
+	ctx.goldsmith.storeFile(ctx, outputFile, inputFiles)
+	ctx.outputFiles <- outputFile
 }
 
-func (ctx *Context) RetrieveCachedFile(outputPath string, inputFile *File) *File {
-	return ctx.goldsmith.retrieveFile(ctx, outputPath, inputFile)
+func (ctx *Context) RetrieveCachedFile(outputPath string, inputFiles ...*File) *File {
+	return ctx.goldsmith.retrieveFile(ctx, outputPath, inputFiles)
 }
 
 func (ctx *Context) step() {

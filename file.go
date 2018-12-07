@@ -175,43 +175,36 @@ func (f *File) load() error {
 	return nil
 }
 
-func (f *File) hash() error {
+func (f *File) hash() (uint32, error) {
 	if f.hashValid {
-		return nil
+		return f.hashValue, nil
 	}
 
 	if err := f.load(); err != nil {
-		return err
+		return 0, err
+	}
+
+	offset, err := f.Seek(0, os.SEEK_CUR)
+	if err != nil {
+		return 0, err
 	}
 
 	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
-		return err
+		return 0, err
 	}
 
 	hasher := crc32.NewIEEE()
 	if _, err := io.Copy(hasher, f.reader); err != nil {
-		return err
+		return 0, err
+	}
+
+	if _, err := f.Seek(offset, os.SEEK_SET); err != nil {
+		return 0, err
 	}
 
 	f.hashValue = hasher.Sum32()
 	f.hashValid = true
-	return nil
-}
-
-func (f *File) equals(file *File) bool {
-	if f.Size() != file.Size() {
-		return false
-	}
-
-	if err := f.hash(); err != nil {
-		return false
-	}
-
-	if err := file.hash(); err != nil {
-		return false
-	}
-
-	return f.hashValue == file.hashValue
+	return f.hashValue, nil
 }
 
 type fileInfo struct {
