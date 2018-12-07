@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -121,6 +122,20 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	return f.reader.Seek(offset, whence)
+}
+
+type FilesByPath []*File
+
+func (f FilesByPath) Len() int {
+	return len(f)
+}
+
+func (f FilesByPath) Swap(i, j int) {
+	f[i], f[j] = f[j], f[i]
+}
+
+func (f FilesByPath) Less(i, j int) bool {
+	return strings.Compare(f[i].Path(), f[j].Path()) < 0
 }
 
 func (f *File) export(targetDir string) error {

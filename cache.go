@@ -6,6 +6,7 @@ import (
 	"hash/crc32"
 	"os"
 	"path/filepath"
+	"sort"
 )
 
 type fileCache struct {
@@ -20,6 +21,10 @@ func (c *fileCache) retrieveFile(context *Context, outputPath string, inputFiles
 
 	outputFile, err := NewFileFromAsset(outputPath, cachePath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 
@@ -64,26 +69,28 @@ func (c *fileCache) storeFile(context *Context, outputFile *File, inputFiles []*
 
 func (c *fileCache) buildCachePath(context *Context, outputPath string, inputFiles []*File) (string, error) {
 	uintBuff := make([]byte, 4)
-
-	hash := crc32.NewIEEE()
 	binary.LittleEndian.PutUint32(uintBuff, context.hash)
-	hash.Write(uintBuff)
-	hash.Write([]byte(outputPath))
 
+	hasher := crc32.NewIEEE()
+	hasher.Write(uintBuff)
+	hasher.Write([]byte(outputPath))
+
+	sort.Sort(FilesByPath(inputFiles))
 	for _, inputFile := range inputFiles {
 		fileHash, err := inputFile.hash()
-		if err == nil {
-			binary.LittleEndian.PutUint32(uintBuff, fileHash)
-			hash.Write(uintBuff)
-			hash.Write([]byte(inputFile.Path()))
-		} else {
+		if err != nil {
 			return "", err
 		}
+
+		binary.LittleEndian.PutUint32(uintBuff, fileHash)
+
+		hasher.Write(uintBuff)
+		hasher.Write([]byte(inputFile.Path()))
 	}
 
 	cachePath := filepath.Join(c.baseDir, fmt.Sprintf(
 		"gs_%.8x%s",
-		hash.Sum32(),
+		hasher.Sum32(),
 		filepath.Ext(outputPath),
 	))
 
