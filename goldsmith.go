@@ -12,8 +12,8 @@ type Goldsmith struct {
 	sourceDir string
 	targetDir string
 
-	contexts    []*Context
-	contextHash hash.Hash32
+	contexts      []*Context
+	contextHasher hash.Hash32
 
 	fileRefs    map[string]bool
 	fileFilters []Filter
@@ -25,9 +25,9 @@ type Goldsmith struct {
 
 func Begin(sourceDir string) *Goldsmith {
 	gs := &Goldsmith{
-		sourceDir:   sourceDir,
-		contextHash: crc32.NewIEEE(),
-		fileRefs:    make(map[string]bool),
+		sourceDir:     sourceDir,
+		contextHasher: crc32.NewIEEE(),
+		fileRefs:      make(map[string]bool),
 	}
 
 	gs.Chain(new(loader))
@@ -40,12 +40,12 @@ func (gs *Goldsmith) Cache(cacheDir string) *Goldsmith {
 }
 
 func (gs *Goldsmith) Chain(plugin Plugin) *Goldsmith {
-	gs.contextHash.Write([]byte(plugin.Name()))
+	gs.contextHasher.Write([]byte(plugin.Name()))
 
 	context := &Context{
 		goldsmith:   gs,
 		plugin:      plugin,
-		hash:        gs.contextHash.Sum32(),
+		hash:        gs.contextHasher.Sum32(),
 		outputFiles: make(chan *File),
 	}
 

@@ -140,7 +140,7 @@ func (f FilesByPath) Less(i, j int) bool {
 
 func (f *File) export(targetDir string) error {
 	targetPath := filepath.Join(targetDir, f.sourcePath)
-	if targetInfo, err := os.Stat(targetPath); err == nil && targetInfo.ModTime().Unix() >= f.ModTime().Unix() {
+	if targetInfo, err := os.Stat(targetPath); err == nil && targetInfo.ModTime().After(f.ModTime()) {
 		return nil
 	}
 
@@ -168,6 +168,7 @@ func (f *File) export(targetDir string) error {
 		if _, err := f.Seek(0, os.SEEK_SET); err != nil {
 			return err
 		}
+
 		if _, err := f.WriteTo(fw); err != nil {
 			return err
 		}
