@@ -1,9 +1,12 @@
 package goldsmith
 
 import (
+	"bytes"
+	"errors"
 	"os"
 	"runtime"
 	"sync"
+	"time"
 )
 
 type Context struct {
@@ -15,6 +18,36 @@ type Context struct {
 	fileFilters []Filter
 	inputFiles  chan *File
 	outputFiles chan *File
+}
+
+func (*Context) CreateFileFromData(sourcePath string, data []byte) *File {
+	return &File{
+		sourcePath: sourcePath,
+		Meta:       make(map[string]interface{}),
+		reader:     bytes.NewReader(data),
+		size:       int64(len(data)),
+		modTime:    time.Now(),
+	}
+}
+
+func (*Context) CreateFileFromAsset(sourcePath, dataPath string) (*File, error) {
+	info, err := os.Stat(dataPath)
+	if err != nil {
+		return nil, err
+	}
+	if info.IsDir() {
+		return nil, errors.New("assets must be files")
+	}
+
+	file := &File{
+		sourcePath: sourcePath,
+		dataPath:   dataPath,
+		Meta:       make(map[string]interface{}),
+		size:       info.Size(),
+		modTime:    info.ModTime(),
+	}
+
+	return file, nil
 }
 
 func (ctx *Context) DispatchFile(file *File) {

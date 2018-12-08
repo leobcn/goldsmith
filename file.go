@@ -2,7 +2,6 @@ package goldsmith
 
 import (
 	"bytes"
-	"errors"
 	"hash/crc32"
 	"io"
 	"io/ioutil"
@@ -27,36 +26,6 @@ type File struct {
 	modTime time.Time
 }
 
-func NewFileFromData(sourcePath string, data []byte) *File {
-	return &File{
-		sourcePath: sourcePath,
-		Meta:       make(map[string]interface{}),
-		reader:     bytes.NewReader(data),
-		size:       int64(len(data)),
-		modTime:    time.Now(),
-	}
-}
-
-func NewFileFromAsset(sourcePath, dataPath string) (*File, error) {
-	info, err := os.Stat(dataPath)
-	if err != nil {
-		return nil, err
-	}
-	if info.IsDir() {
-		return nil, errors.New("assets must be files")
-	}
-
-	file := &File{
-		sourcePath: sourcePath,
-		dataPath:   dataPath,
-		Meta:       make(map[string]interface{}),
-		size:       info.Size(),
-		modTime:    info.ModTime(),
-	}
-
-	return file, nil
-}
-
 func (f *File) Path() string {
 	return f.sourcePath
 }
@@ -79,21 +48,6 @@ func (f *File) Size() int64 {
 
 func (f *File) ModTime() time.Time {
 	return f.modTime
-}
-
-func (f *File) Value(key string) (interface{}, bool) {
-	value, ok := f.Meta[key]
-	return value, ok
-}
-
-func (f *File) SetValue(key string, value interface{}) {
-	f.Meta[key] = value
-}
-
-func (f *File) InheritValues(sourceFile *File) {
-	for name, value := range sourceFile.Meta {
-		f.SetValue(name, value)
-	}
 }
 
 func (f *File) Read(data []byte) (int, error) {

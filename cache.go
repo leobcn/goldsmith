@@ -19,7 +19,7 @@ func (c *fileCache) retrieveFile(context *Context, outputPath string, inputFiles
 		return nil, err
 	}
 
-	outputFile, err := NewFileFromAsset(outputPath, cachePath)
+	outputFile, err := context.CreateFileFromAsset(outputPath, cachePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
